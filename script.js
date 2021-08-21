@@ -14,7 +14,7 @@ const seededRandom = s => () => (2**31 - 1 & (s = Math.imul(48271, s + seed))) /
 const camera = {
     position: {x: 0, y: 0},
     velocity: {x: 15, y: 2},
-    size: 100,
+    size: 50,
     sizeVelocity: 1
 };
 
@@ -55,17 +55,17 @@ const update = () => {
         for (let i = 0; i < numStars; i++) {
             entities.push({
                 position: Vec.scale({x: chunk.x + random(), y: chunk.y + random()}, chunkSize),
-                star: {size: random() * 0.5},
+                star: {size: random() * 0.3},
                 chunk
             });
         }
 
         // Create planet if any
-        if (random() < 0.5) {
+        if (random() < 0.2) {
             entities.push({
-                position: Vec.scale({x: chunk.x + random() * 0.1, y: chunk.y + random() * 0.1}, chunkSize),
+                position: Vec.scale({x: chunk.x + random() * 0.4, y: chunk.y + random() * 0.4 }, chunkSize),
                 planet: {
-                    radius: random() * 3 + 1,
+                    radius: (random() * 0.2 + 0.1) * chunkSize,
                     color: colors[Math.floor(random() * 32)]
                 },
                 chunk
