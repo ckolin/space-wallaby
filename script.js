@@ -51,11 +51,14 @@ const update = () => {
         const random = seededRandom(chunk.y * 1e9 + chunk.x * 1e6);
 
         // Create stars
-        const numStars = random() * 5;
+        const numStars = random() * 3;
         for (let i = 0; i < numStars; i++) {
             entities.push({
-                position: Vec.scale({x: chunk.x + random(), y: chunk.y + random()}, chunkSize),
-                star: {size: random() * 0.3},
+                position: Vec.scale({ x: chunk.x + random(), y: chunk.y + random() }, chunkSize),
+                star: {
+                    size: Math.ceil(random() * 2),
+                    opacity: random() * 0.5 + 0.1
+                },
                 chunk
             });
         }
@@ -86,13 +89,13 @@ const draw = () => {
     ctx.scale(scale, scale);
     ctx.translate(-camera.position.x, -camera.position.y);
 
-    for (let entity of entities) {
-        if (entity.star) {
-            ctx.fillStyle = colors[31];
-            ctx.fillRect(entity.position.x, entity.position.y, entity.star.size, entity.star.size);
-        }
-
-        if (entity.planet) {
+    // Draw stars
+    for (let entity of entities.filter(e => e.star)) {
+        ctx.fillStyle = colors[31];
+        ctx.globalAlpha = entity.star.opacity;
+        ctx.fillRect(entity.position.x, entity.position.y, entity.star.size, entity.star.size);
+    }
+    ctx.globalAlpha = 1;
             ctx.fillStyle = entity.planet.color;
             ctx.beginPath();
             ctx.arc(entity.position.x, entity.position.y, entity.planet.radius, 0, 2 * Math.PI);
