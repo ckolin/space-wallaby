@@ -9,16 +9,16 @@ const colors = [
     "#ff94b3", "#bd1f3f", "#ec614a", "#ffa468", "#fff6ae", "#ffda70", "#f4b03c", "#ffffff"];
 
 const seed = Date.now();
-const seededRandom = s => () => (2**31 - 1 & (s = Math.imul(48271, s + seed))) / 2**31;
+const seededRandom = s => () => (2 ** 31 - 1 & (s = Math.imul(48271, s + seed))) / 2 ** 31;
 
 const camera = {
-    position: {x: 0, y: 0},
-    velocity: {x: 15, y: 2},
-    size: 50,
-    sizeVelocity: 1
+    position: { x: 0, y: 0 },
+    velocity: { x: 3, y: 1 },
+    size: 150,
+    sizeVelocity: 0
 };
 
-const chunkSize = 10;
+const chunkSize = 42;
 let chunks = [];
 let entities = [];
 
@@ -35,7 +35,7 @@ const update = () => {
     chunks = [];
     for (let x = Math.floor(camera.position.x / chunkSize) - 1; (x - 1) * chunkSize < Math.ceil(camera.position.x + camera.size); x++) {
         for (let y = Math.floor(camera.position.y / chunkSize) - 1; (y - 1) * chunkSize < Math.ceil(camera.position.y + camera.size); y++) {
-            chunks.push({x, y});
+            chunks.push({ x, y });
         }
     }
 
@@ -66,10 +66,10 @@ const update = () => {
         // Create planet if any
         if (random() < 0.2) {
             entities.push({
-                position: Vec.scale({x: chunk.x + random() * 0.4, y: chunk.y + random() * 0.4 }, chunkSize),
+                position: Vec.floor(Vec.scale({ x: chunk.x + random() * 0.4, y: chunk.y + random() * 0.4 }, chunkSize)),
                 planet: {
-                    radius: (random() * 0.2 + 0.1) * chunkSize,
-                    color: colors[Math.floor(random() * 32)]
+                    radius: Math.round((random() * 0.2 + 0.1) * chunkSize),
+                    color: colors[Math.floor(random() * 6)]
                 },
                 chunk
             });
@@ -96,10 +96,47 @@ const draw = () => {
         ctx.fillRect(entity.position.x, entity.position.y, entity.star.size, entity.star.size);
     }
     ctx.globalAlpha = 1;
-            ctx.fillStyle = entity.planet.color;
-            ctx.beginPath();
-            ctx.arc(entity.position.x, entity.position.y, entity.planet.radius, 0, 2 * Math.PI);
-            ctx.fill();
+
+    // Draw planets
+    for (let entity of entities.filter(e => e.planet)) {
+        ctx.fillStyle = entity.planet.color;
+
+        // Mid-point circle drawing
+        const p = entity.position;
+        const r = entity.planet.radius;
+        let x = r, y = 0;
+        
+        ctx.fillRect(p.x + x, p.y + y, 1, 1);
+        ctx.fillRect(p.x - x, p.y - y, 1, 1);
+        ctx.fillRect(p.x - y, p.y + x, 1, 1);
+        ctx.fillRect(p.x - y, p.y - x, 1, 1);
+        
+        let val = 1 - r;
+        while (x > y) {
+            y++;
+            
+            if (val <= 0) {
+                val += 2 * y + 1;
+            } else {
+                x--;
+                val += 2 * y - 2 * x + 1;
+            }
+
+            if (x < y) {
+                break;
+            }
+
+            ctx.fillRect(p.x + x, p.y + y, 1, 1);
+            ctx.fillRect(p.x + x, p.y - y, 1, 1);
+            ctx.fillRect(p.x - x, p.y + y, 1, 1);
+            ctx.fillRect(p.x - x, p.y - y, 1, 1);
+
+            if (x !== y) {
+                ctx.fillRect(p.x + y, p.y + x, 1, 1);
+                ctx.fillRect(p.x + y, p.y - x, 1, 1);
+                ctx.fillRect(p.x - y, p.y + x, 1, 1);
+                ctx.fillRect(p.x - y, p.y - x, 1, 1);
+            }
         }
     }
 
@@ -109,8 +146,8 @@ const draw = () => {
 };
 
 const resize = () => {
-    canvas.width = canvas.height = 500;
-    ctx.imageSmoothingEnabled = true;
+    canvas.width = canvas.height = 600;
+    ctx.imageSmoothingEnabled = false;
 };
 
 resize();
