@@ -42,13 +42,18 @@ let entities = [
     player
 ];
 
+let paused = false;
+
 let lastUpdate = Date.now();
 const update = () => {
     const now = Date.now();
     const delta = (now - lastUpdate) / 1000;
     lastUpdate = now;
 
-    camera.position = Vec.add(camera.position, Vec.scale(camera.velocity, delta));
+    if (paused) {
+        return;
+    }
+
     // Gravity
     const planets = entities.filter(e => e.planet);
     for (let entity of entities.filter(e => e.gravity)) {
@@ -111,12 +116,12 @@ const update = () => {
         }
 
         // Create planet if any
-        if (random() < 0.2) {
+        if (random() < 0.3) {
             entities.push({
                 position: Vec.floor(Vec.scale({ x: chunk.x + random() * 0.4, y: chunk.y + random() * 0.4 }, chunkSize)),
                 planet: {
                     radius: Math.round((random() * 0.2 + 0.1) * chunkSize),
-                    color: colors[Math.floor(random() * 6)]
+                    color: colors[Math.floor(random() * 10)]
                 },
                 chunk
             });
@@ -205,6 +210,9 @@ const resize = () => {
     canvas.width = canvas.height = 600;
     ctx.imageSmoothingEnabled = false;
 };
+
+window.addEventListener("blur", () => paused = true);
+window.addEventListener("focus", () => paused = false);
 
 resize();
 draw();
