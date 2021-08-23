@@ -31,10 +31,12 @@ const update = () => {
     camera.position = Vec.add(camera.position, Vec.scale(camera.velocity, delta));
     camera.size += camera.sizeVelocity * delta;
 
+    // Find active chunks
     const previousChunks = chunks;
     chunks = [];
-    for (let x = Math.floor(camera.position.x / chunkSize) - 1; (x - 1) * chunkSize < Math.ceil(camera.position.x + camera.size); x++) {
-        for (let y = Math.floor(camera.position.y / chunkSize) - 1; (y - 1) * chunkSize < Math.ceil(camera.position.y + camera.size); y++) {
+    const topLeft = Vec.add(camera.position, Vec.scale({ x: 1, y: 1 }, -camera.size / 2));
+    for (let x = Math.floor(topLeft.x / chunkSize) - 1; (x - 1) * chunkSize < Math.ceil(topLeft.x + camera.size); x++) {
+        for (let y = Math.floor(topLeft.y / chunkSize) - 1; (y - 1) * chunkSize < Math.ceil(topLeft.y + camera.size); y++) {
             chunks.push({ x, y });
         }
     }
@@ -87,7 +89,8 @@ const draw = () => {
     ctx.save();
     const scale = canvas.width / camera.size;
     ctx.scale(scale, scale);
-    ctx.translate(-camera.position.x, -camera.position.y);
+    const topLeft = Vec.add(camera.position, Vec.scale({ x: 1, y: 1 }, -camera.size / 2));
+    ctx.translate(-topLeft.x, -topLeft.y);
 
     // Draw stars
     for (let entity of entities.filter(e => e.star)) {
@@ -105,16 +108,16 @@ const draw = () => {
         const p = entity.position;
         const r = entity.planet.radius;
         let x = r, y = 0;
-        
+
         ctx.fillRect(p.x + x, p.y + y, 1, 1);
         ctx.fillRect(p.x - x, p.y - y, 1, 1);
         ctx.fillRect(p.x - y, p.y + x, 1, 1);
         ctx.fillRect(p.x - y, p.y - x, 1, 1);
-        
+
         let val = 1 - r;
         while (x > y) {
             y++;
-            
+
             if (val <= 0) {
                 val += 2 * y + 1;
             } else {
