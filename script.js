@@ -1,4 +1,12 @@
-const dbg = (obj) => { console.log(obj); return obj; };
+const dbg = (obj) => {
+    if (obj) {
+        console.log(obj);
+        return obj;
+    } else {
+        return location.hash === "#debug";
+    }
+};
+
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 
@@ -6,7 +14,8 @@ const colors = [
     "#8cffde", "#45b8b3", "#839740", "#c9ec85", "#46c657", "#158968", "#2c5b6d", "#222a5c",
     "#566a89", "#8babbf", "#cce2e1", "#ffdba5", "#ccac68", "#a36d3e", "#683c34", "#000000",
     "#38002c", "#663b93", "#8b72de", "#9cd8fc", "#5e96dd", "#3953c0", "#800c53", "#c34b91",
-    "#ff94b3", "#bd1f3f", "#ec614a", "#ffa468", "#fff6ae", "#ffda70", "#f4b03c", "#ffffff"];
+    "#ff94b3", "#bd1f3f", "#ec614a", "#ffa468", "#fff6ae", "#ffda70", "#f4b03c", "#ffffff"
+];
 
 const seed = Date.now();
 const seededRandom = s => () => (2 ** 31 - 1 & (s = Math.imul(48271, s + seed))) / 2 ** 31;
@@ -140,6 +149,14 @@ const draw = () => {
                 ctx.fillRect(p.x - y, p.y + x, 1, 1);
                 ctx.fillRect(p.x - y, p.y - x, 1, 1);
             }
+        }
+    }
+
+    // Debug overlay
+    if (dbg()) {
+        for (let entity of entities.filter(e => e.position)) {
+            ctx.fillStyle = entity.debugColor || "red";
+            ctx.fillRect(entity.position.x, entity.position.y, 1, 1);
         }
     }
 
