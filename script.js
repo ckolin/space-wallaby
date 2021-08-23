@@ -22,14 +22,25 @@ const seededRandom = s => () => (2 ** 31 - 1 & (s = Math.imul(48271, s + seed)))
 
 const camera = {
     position: { x: 0, y: 0 },
-    velocity: { x: 3, y: 1 },
+    velocity: { x: 0, y: 0 },
     size: 150,
     sizeVelocity: 0
 };
 
+const player = {
+    debugColor: "green",
+    position: { x: 0, y: 0 },
+    velocity: { x: 0, y: 0 },
+    gravity: 1
+};
+
 const chunkSize = 42;
 let chunks = [];
-let entities = [];
+
+let entities = [
+    camera,
+    player
+];
 
 let lastUpdate = Date.now();
 const update = () => {
@@ -38,7 +49,32 @@ const update = () => {
     lastUpdate = now;
 
     camera.position = Vec.add(camera.position, Vec.scale(camera.velocity, delta));
+    // Gravity
+    const planets = entities.filter(e => e.planet);
+    for (let entity of entities.filter(e => e.gravity)) {
+        let force = { x: 0, y: 0 };
+        for (let planet of planets) {
+            const between = Vec.subtract(planet.position, entity.position);
+            const distance = Vec.length(between);
+            force = Vec.add(
+                force,
+                Vec.scale(
+                    Vec.scale(between, 1 / distance),
+                    planet.planet.radius ** 2 / distance
+                )
+            );
+        }
+        entity.velocity = Vec.add(entity.velocity, Vec.scale(force, delta));
+    }
+
+    // Camera
+    camera.velocity = Vec.subtract(player.position, camera.position);
     camera.size += camera.sizeVelocity * delta;
+
+    // Velocity
+    for (let entity of entities.filter(e => e.velocity)) {
+        entity.position = Vec.add(entity.position, Vec.scale(entity.velocity, delta));
+    }
 
     // Find active chunks
     const previousChunks = chunks;
