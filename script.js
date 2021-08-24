@@ -210,6 +210,10 @@ const draw = () => {
         ctx.restore();
     }
 
+    // Draw player
+    ctx.fillStyle = colors[0];
+    ctx.fillRect(player.position.x - 3, player.position.y - 3, 6, 6);
+
     // Debug overlay
     if (dbg()) {
         for (let entity of entities.filter(e => e.position)) {
