@@ -13,25 +13,26 @@ const dbg = (...objs) => {
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 
+// NYX8 by Javier Guerrero (https://lospec.com/palette-list/nyx8)
 const colors = [
-    "#8cffde", "#45b8b3", "#839740", "#c9ec85", "#46c657", "#158968", "#2c5b6d", "#222a5c",
-    "#566a89", "#8babbf", "#cce2e1", "#ffdba5", "#ccac68", "#a36d3e", "#683c34", "#000000",
-    "#38002c", "#663b93", "#8b72de", "#9cd8fc", "#5e96dd", "#3953c0", "#800c53", "#c34b91",
-    "#ff94b3", "#bd1f3f", "#ec614a", "#ffa468", "#fff6ae", "#ffda70", "#f4b03c", "#ffffff"
+    "#08141e", "#0f2a3f", "#20394f", "#f6d6bd",
+    "#c3a38a", "#997577", "#816271", "#4e495f",
 ];
 
 const seed = Date.now();
 const seededRandom = s => () => (2 ** 31 - 1 & (s = Math.imul(48271, s + seed))) / 2 ** 31;
+const chunkRandom = c => seededRandom(c.y * 1e9 + c.x * 1e6);
 
 const camera = {
     position: { x: 0, y: 0 },
     velocity: { x: 0, y: 0 },
-    size: 150,
-    sizeVelocity: 0
+    size: 1,
+    minSize: 100,
+    maxSize: 200
 };
 
 const player = {
-    debugColor: "green",
+    debugColor: "#00f",
     position: { x: 0, y: 0 },
     velocity: { x: 0, y: 0 },
     gravity: 1
@@ -71,21 +72,17 @@ const update = () => {
     entities = entities.filter(e => !e.chunk || chunks.some(c => c.x === e.chunk.x && c.y === e.chunk.y));
 
     // Generate new chunks
-    for (let chunk of chunks) {
-        if (previousChunks.some(c => c.x === chunk.x && c.y === chunk.y)) {
-            continue;
-        }
-
-        const random = seededRandom(chunk.y * 1e9 + chunk.x * 1e6);
+    const newChunks = chunks.filter(c => !previousChunks.some(p => p.x === c.x && p.y === c.y));
+    for (let chunk of newChunks) {
+        const random = chunkRandom(chunk);
 
         // Create stars
-        const numStars = random() * 3;
+        const numStars = random() * 4;
         for (let i = 0; i < numStars; i++) {
             entities.push({
                 position: Vec.scale({ x: chunk.x + random(), y: chunk.y + random() }, chunkSize),
                 star: {
                     size: Math.ceil(random() * 2),
-                    opacity: random() * 0.5 + 0.1
                 },
                 chunk
             });
@@ -99,7 +96,7 @@ const update = () => {
                 rotationalVelocity: (random() - 0.5) * 3,
                 planet: {
                     radius: Math.round((random() * 0.2 + 0.1) * chunkSize),
-                    color: colors[Math.floor(random() * 10)]
+                    stripeSpacing: Math.ceil(random() * 3)
                 },
                 chunk
             });
@@ -108,7 +105,7 @@ const update = () => {
 
     // Camera
     camera.velocity = Vec.add(Vec.scale(player.velocity, 0.5), Vec.subtract(player.position, camera.position));
-    camera.size += camera.sizeVelocity * delta;
+    camera.size = Math.min(camera.maxSize, Vec.distance2(player.position, camera.position) + camera.minSize);
 
     // Gravity
     const planets = entities.filter(e => e.planet);
@@ -151,7 +148,7 @@ const draw = () => {
     update();
 
     // Draw backgruond
-    ctx.fillStyle = colors[15];
+    ctx.fillStyle = colors[0];
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     // Center around camera
@@ -162,12 +159,10 @@ const draw = () => {
     ctx.translate(-topLeft.x, -topLeft.y);
 
     // Draw stars
+    ctx.fillStyle = colors[1];
     for (let entity of entities.filter(e => e.star)) {
-        ctx.fillStyle = colors[31];
-        ctx.globalAlpha = entity.star.opacity;
         ctx.fillRect(entity.position.x, entity.position.y, entity.star.size, entity.star.size);
     }
-    ctx.globalAlpha = 1;
 
     // Draw planets
     for (let entity of entities.filter(e => e.planet)) {
@@ -205,28 +200,36 @@ const draw = () => {
             }
         }
 
-        ctx.fillStyle = entity.planet.color;
+        const random = chunkRandom(entity.chunk);
+        const c = Math.round(random()) + 5;
         for (let y = -r; y <= r; y++) {
-            ctx.fillRect(-width[y], y, 2 * width[y] + 1, 1);
+            const w = width[y];
+            ctx.fillStyle = colors[c];
+            ctx.fillRect(-w, y, 2 * w + 1, 1);
+
+            if (y % entity.planet.stripeSpacing == 0) {
+                ctx.fillStyle = colors[c + 1];
+                ctx.fillRect(-w, y, random() * 2 * w, 1);
+            }
         }
 
         ctx.restore();
     }
 
     // Draw player
-    ctx.fillStyle = colors[0];
+    ctx.fillStyle = colors[4];
     ctx.fillRect(player.position.x - 3, player.position.y - 3, 6, 6);
 
     // Debug overlay
     if (dbg()) {
         ctx.globalAlpha = 0.5;
         for (let entity of entities.filter(e => e.position)) {
-            ctx.fillStyle = entity.debugColor || "red";
+            ctx.fillStyle = entity.debugColor || "#f00";
             ctx.fillRect(entity.position.x, entity.position.y, 1, 1);
         }
         for (let entity of entities.filter(e => e.velocity)) {
             const end = Vec.add(entity.position, entity.velocity);
-            ctx.strokeStyle = "red";
+            ctx.strokeStyle = "#0f0";
             ctx.beginPath();
             ctx.moveTo(entity.position.x, entity.position.y);
             ctx.lineTo(end.x, end.y);
