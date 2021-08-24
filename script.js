@@ -54,33 +54,6 @@ const update = () => {
         return;
     }
 
-    // Gravity
-    const planets = entities.filter(e => e.planet);
-    for (let entity of entities.filter(e => e.gravity)) {
-        let force = { x: 0, y: 0 };
-        for (let planet of planets) {
-            const between = Vec.subtract(planet.position, entity.position);
-            const distance = Vec.length(between);
-            force = Vec.add(
-                force,
-                Vec.scale(
-                    Vec.scale(between, 1 / distance),
-                    planet.planet.radius ** 2 / distance
-                )
-            );
-        }
-        entity.velocity = Vec.add(entity.velocity, Vec.scale(force, delta));
-    }
-
-    // Camera
-    camera.velocity = Vec.subtract(player.position, camera.position);
-    camera.size += camera.sizeVelocity * delta;
-
-    // Velocity
-    for (let entity of entities.filter(e => e.velocity)) {
-        entity.position = Vec.add(entity.position, Vec.scale(entity.velocity, delta));
-    }
-
     // Find active chunks
     const previousChunks = chunks;
     chunks = [];
@@ -116,9 +89,11 @@ const update = () => {
         }
 
         // Create planet if any
-        if (random() < 0.3) {
+        if (random() < 0.2) {
             entities.push({
                 position: Vec.floor(Vec.scale({ x: chunk.x + random() * 0.4, y: chunk.y + random() * 0.4 }, chunkSize)),
+                rotation: random() * 2 * Math.PI,
+                rotationalVelocity: (random() - 0.5) * 3,
                 planet: {
                     radius: Math.round((random() * 0.2 + 0.1) * chunkSize),
                     color: colors[Math.floor(random() * 10)]
@@ -126,6 +101,46 @@ const update = () => {
                 chunk
             });
         }
+    }
+
+    // Camera
+    camera.velocity = Vec.add(Vec.scale(player.velocity, 0.5), Vec.subtract(player.position, camera.position));
+    camera.size += camera.sizeVelocity * delta;
+
+    // Gravity
+    const planets = entities.filter(e => e.planet);
+    for (let entity of entities.filter(e => e.gravity)) {
+        let force = { x: 0, y: 0 };
+
+        for (let planet of planets) {
+            const between = Vec.subtract(planet.position, entity.position);
+            const distance = Vec.length(between);
+
+            // Collision
+            if (distance < planet.planet.radius) {
+                // Do something
+            }
+
+            force = Vec.add(
+                force,
+                Vec.scale(
+                    Vec.scale(between, 1 / distance),
+                    planet.planet.radius ** 2 / distance
+                )
+            );
+        }
+
+        entity.velocity = Vec.add(entity.velocity, Vec.scale(force, entity.gravity * delta));
+    }
+
+    // Velocity
+    for (let entity of entities.filter(e => e.velocity)) {
+        entity.position = Vec.add(entity.position, Vec.scale(entity.velocity, delta));
+    }
+
+    // Rotation
+    for (let entity of entities.filter(e => e.rotationalVelocity)) {
+        entity.rotation += entity.rotationalVelocity * delta;
     }
 };
 
@@ -136,6 +151,7 @@ const draw = () => {
     ctx.fillStyle = colors[15];
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+    // Center around camera
     ctx.save();
     const scale = canvas.width / camera.size;
     ctx.scale(scale, scale);
@@ -152,22 +168,21 @@ const draw = () => {
 
     // Draw planets
     for (let entity of entities.filter(e => e.planet)) {
-        ctx.fillStyle = entity.planet.color;
+        ctx.save();
+        ctx.translate(entity.position.x, entity.position.y);
+        ctx.rotate(entity.rotation);
 
         // Mid-point circle drawing
-        const p = entity.position;
+        const width = {};
+        const add = (x, y) => width[y] = y in width ? Math.max(width[y], x) : x;
         const r = entity.planet.radius;
         let x = r, y = 0;
 
-        ctx.fillRect(p.x + x, p.y + y, 1, 1);
-        ctx.fillRect(p.x - x, p.y - y, 1, 1);
-        ctx.fillRect(p.x - y, p.y + x, 1, 1);
-        ctx.fillRect(p.x - y, p.y - x, 1, 1);
+        add(+x, +y);
 
         let val = 1 - r;
         while (x > y) {
             y++;
-
             if (val <= 0) {
                 val += 2 * y + 1;
             } else {
@@ -179,18 +194,20 @@ const draw = () => {
                 break;
             }
 
-            ctx.fillRect(p.x + x, p.y + y, 1, 1);
-            ctx.fillRect(p.x + x, p.y - y, 1, 1);
-            ctx.fillRect(p.x - x, p.y + y, 1, 1);
-            ctx.fillRect(p.x - x, p.y - y, 1, 1);
-
+            add(+x, +y);
+            add(+x, -y);
             if (x !== y) {
-                ctx.fillRect(p.x + y, p.y + x, 1, 1);
-                ctx.fillRect(p.x + y, p.y - x, 1, 1);
-                ctx.fillRect(p.x - y, p.y + x, 1, 1);
-                ctx.fillRect(p.x - y, p.y - x, 1, 1);
+                add(+y, +x);
+                add(+y, -x);
             }
         }
+
+        ctx.fillStyle = entity.planet.color;
+        for (let y = -r; y <= r; y++) {
+            ctx.fillRect(-width[y], y, 2 * width[y] + 1, 1);
+        }
+
+        ctx.restore();
     }
 
     // Debug overlay
