@@ -1,9 +1,12 @@
-const dbg = (obj) => {
-    if (obj) {
-        console.log(obj);
-        return obj;
+const dbg = (...objs) => {
+    const enabled = location.hash === "#debug";
+    if (objs.length > 0) {
+        if (enabled) {
+            console.log(objs);
+        }
+        return objs;
     } else {
-        return location.hash === "#debug";
+        return enabled;
     }
 };
 
@@ -216,10 +219,20 @@ const draw = () => {
 
     // Debug overlay
     if (dbg()) {
+        ctx.globalAlpha = 0.5;
         for (let entity of entities.filter(e => e.position)) {
             ctx.fillStyle = entity.debugColor || "red";
             ctx.fillRect(entity.position.x, entity.position.y, 1, 1);
         }
+        for (let entity of entities.filter(e => e.velocity)) {
+            const end = Vec.add(entity.position, entity.velocity);
+            ctx.strokeStyle = "red";
+            ctx.beginPath();
+            ctx.moveTo(entity.position.x, entity.position.y);
+            ctx.lineTo(end.x, end.y);
+            ctx.stroke();
+        }
+        ctx.globalAlpha = 1;
     }
 
     ctx.restore();
