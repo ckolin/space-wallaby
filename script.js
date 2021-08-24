@@ -223,13 +223,20 @@ const draw = () => {
     requestAnimationFrame(draw);
 };
 
-const resize = () => {
-    canvas.width = canvas.height = 600;
-    ctx.imageSmoothingEnabled = false;
-};
-
+// Pause
 window.addEventListener("blur", () => paused = true);
 window.addEventListener("focus", () => paused = false);
 
+// Canvas resizing
+const resize = () => {
+    const unit = 64;
+    const size = Math.min(Math.floor(Math.min(window.innerWidth, window.innerHeight) / unit), 12);
+    canvas.width = canvas.height = size * unit;
+    canvas.style.left = `${(window.innerWidth - canvas.width) / 2}px`;
+    canvas.style.top = `${(window.innerHeight - canvas.height) / 2}px`;
+    ctx.imageSmoothingEnabled = false;
+};
+window.addEventListener("resize", resize);
 resize();
+
 draw();
