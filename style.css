@@ -1,9 +1,18 @@
 body {
 	color: white;
-	background-color: gray;
+	background-color: #111;
 	margin: 0;
 }
 
 canvas {
 	position: absolute;
+	border-radius: 2vmin;
+	box-shadow: 1vmin 1vmin 4vmin rgba(0, 0, 0, 0.4);
+}
+
+@media (prefers-color-scheme: light) {
+	body {
+		color: black;
+		background: white;
+	}
 }
