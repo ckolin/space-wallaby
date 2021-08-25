@@ -37,7 +37,11 @@ const player = {
     velocity: { x: 0, y: 0 },
     rotation: 0,
     rotationalVelocity: 0,
-    gravity: 1
+    gravity: 1,
+    collision: {
+        radius: 2,
+        attach: true
+    }
 };
 
 const chunkSize = 42;
@@ -124,12 +128,16 @@ const update = () => {
             const distance = Vec.length(between);
 
             // Collision
-            if (distance < planet.planet.radius) {
-                entity.velocity = force = {x: 0, y: 0};
-                entity.rotationalVelocity = 0;
-                entity.attachedTo = planet;
-                planet.attached.push(entity);
-                break;
+            if (entity.collision && distance < planet.planet.radius + entity.collision.radius) {
+                if (entity.collision.attach) {
+                    entity.velocity = force = {x: 0, y: 0};
+                    entity.rotationalVelocity = 0;
+                    entity.attachedTo = planet;
+                    planet.attached.push(entity);
+                    break;
+                } else {
+                    // TODO: Bounce off
+                }
             }
 
             force = Vec.add(
