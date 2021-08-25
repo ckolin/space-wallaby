@@ -35,6 +35,8 @@ const player = {
     debugColor: "#00f",
     position: { x: 0, y: 0 },
     velocity: { x: 0, y: 0 },
+    rotation: 0,
+    rotationalVelocity: 0,
     gravity: 1
 };
 
@@ -93,11 +95,12 @@ const update = () => {
             entities.push({
                 position: Vec.floor(Vec.scale({ x: chunk.x + random() * 0.4, y: chunk.y + random() * 0.4 }, chunkSize)),
                 rotation: random() * 2 * Math.PI,
-                rotationalVelocity: (random() - 0.5) * 3,
+                rotationalVelocity: (random() - 0.5) * 5,
                 planet: {
                     radius: Math.round((random() * 0.2 + 0.1) * chunkSize),
                     stripeSpacing: Math.ceil(random() * 3)
                 },
+                attached: [],
                 chunk
             });
         }
@@ -110,6 +113,10 @@ const update = () => {
     // Gravity
     const planets = entities.filter(e => e.planet);
     for (let entity of entities.filter(e => e.gravity)) {
+        if (entity.attachedTo) {
+            continue; // Skip attached entity
+        }
+
         let force = { x: 0, y: 0 };
 
         for (let planet of planets) {
@@ -118,7 +125,11 @@ const update = () => {
 
             // Collision
             if (distance < planet.planet.radius) {
-                // Do something
+                entity.velocity = force = {x: 0, y: 0};
+                entity.rotationalVelocity = 0;
+                entity.attachedTo = planet;
+                planet.attached.push(entity);
+                break;
             }
 
             force = Vec.add(
@@ -135,12 +146,28 @@ const update = () => {
 
     // Velocity
     for (let entity of entities.filter(e => e.velocity)) {
-        entity.position = Vec.add(entity.position, Vec.scale(entity.velocity, delta));
+        const distance = Vec.scale(entity.velocity, delta);
+        entity.position = Vec.add(entity.position, distance);
+
+        if (entity.attached) {
+            for (let attached of entity.attached) {
+                attached.position = Vec.add(attached.position, distance);
+            }
+        }
     }
 
     // Rotation
     for (let entity of entities.filter(e => e.rotationalVelocity)) {
-        entity.rotation += entity.rotationalVelocity * delta;
+        const rotation = entity.rotationalVelocity * delta
+        entity.rotation += rotation;
+
+        if (entity.attached) {
+            for (let attached of entity.attached) {
+                const offset = Vec.rotate(Vec.subtract(attached.position, entity.position), rotation);
+                attached.position = Vec.add(entity.position, offset);
+                attached.rotation += rotation;
+            }
+        }
     }
 };
 
@@ -169,6 +196,7 @@ const draw = () => {
         ctx.save();
         ctx.translate(entity.position.x, entity.position.y);
         ctx.rotate(entity.rotation);
+        ctx.translate(-0.5, -0.5); // Make centered
 
         // Mid-point circle drawing
         const width = {};
@@ -217,8 +245,12 @@ const draw = () => {
     }
 
     // Draw player
+    ctx.save();
+    ctx.translate(player.position.x, player.position.y);
+    ctx.rotate(player.rotation);
     ctx.fillStyle = colors[4];
-    ctx.fillRect(player.position.x - 3, player.position.y - 3, 6, 6);
+    ctx.fillRect(-3, -3, 6, 6);
+    ctx.restore();
 
     // Debug overlay
     if (dbg()) {
@@ -233,6 +265,12 @@ const draw = () => {
             ctx.beginPath();
             ctx.moveTo(entity.position.x, entity.position.y);
             ctx.lineTo(end.x, end.y);
+            ctx.stroke();
+        }
+        for (let entity of entities.filter(e => e.planet)) {
+            ctx.strokeStyle = "#f00";
+            ctx.beginPath();
+            ctx.arc(entity.position.x, entity.position.y, entity.planet.radius, 0, 2 * Math.PI);
             ctx.stroke();
         }
         ctx.globalAlpha = 1;
