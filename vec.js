@@ -28,9 +28,11 @@ class Vec {
     }
 
     static rotate(vec, rad) {
+        const sin = Math.sin(rad);
+        const cos = Math.cos(rad);
         return {
-            x: Math.cos(rad) * vec.x - Math.sin(rad) * vec.y,
-            y: Math.sin(rad) * vec.x + Math.cos(rad) * vec.y
+            x: cos * vec.x - sin * vec.y,
+            y: sin * vec.x + cos * vec.y
         };
     }
 
