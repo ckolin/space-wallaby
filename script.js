@@ -23,6 +23,9 @@ const seed = Date.now();
 const seededRandom = s => () => (2 ** 31 - 1 & (s = Math.imul(48271, s + seed))) / 2 ** 31;
 const chunkRandom = c => seededRandom(c.y * 1e9 + c.x * 1e6);
 
+const chunkSize = 42;
+let chunks = [];
+
 const camera = {
     position: { x: 0, y: 0 },
     velocity: { x: 0, y: 0 },
@@ -43,9 +46,6 @@ const player = {
         attach: true
     }
 };
-
-const chunkSize = 42;
-let chunks = [];
 
 let entities = [
     camera,
@@ -94,7 +94,7 @@ const update = () => {
             });
         }
 
-        // Create planet if any
+        // Create planet if needed
         if (random() < 0.2) {
             entities.push({
                 position: Vec.floor(Vec.scale({ x: chunk.x + random() * 0.4, y: chunk.y + random() * 0.4 }, chunkSize)),
@@ -122,7 +122,6 @@ const update = () => {
         }
 
         let force = { x: 0, y: 0 };
-
         for (let planet of planets) {
             const between = Vec.subtract(planet.position, entity.position);
             const distance = Vec.length(between);
@@ -130,7 +129,7 @@ const update = () => {
             // Collision
             if (entity.collision && distance < planet.planet.radius + entity.collision.radius) {
                 if (entity.collision.attach) {
-                    entity.velocity = force = {x: 0, y: 0};
+                    entity.velocity = force = { x: 0, y: 0 };
                     entity.rotationalVelocity = 0;
                     entity.attachedTo = planet;
                     planet.attached.push(entity);
@@ -154,12 +153,13 @@ const update = () => {
 
     // Velocity
     for (let entity of entities.filter(e => e.velocity)) {
-        const distance = Vec.scale(entity.velocity, delta);
-        entity.position = Vec.add(entity.position, distance);
+        const translation = Vec.scale(entity.velocity, delta);
+        entity.position = Vec.add(entity.position, translation);
 
+        // Move attached entities
         if (entity.attached) {
             for (let attached of entity.attached) {
-                attached.position = Vec.add(attached.position, distance);
+                attached.position = Vec.add(attached.position, translation);
             }
         }
     }
@@ -169,6 +169,7 @@ const update = () => {
         const rotation = entity.rotationalVelocity * delta
         entity.rotation += rotation;
 
+        // Rotate attached entities
         if (entity.attached) {
             for (let attached of entity.attached) {
                 const offset = Vec.rotate(Vec.subtract(attached.position, entity.position), rotation);
@@ -237,14 +238,14 @@ const draw = () => {
         }
 
         const random = chunkRandom(entity.chunk);
-        const c = Math.round(random()) + 5;
+        const firstColor = Math.round(random()) + 5;
         for (let y = -r; y <= r; y++) {
             const w = width[y];
-            ctx.fillStyle = colors[c];
+            ctx.fillStyle = colors[firstColor];
             ctx.fillRect(-w, y, 2 * w + 1, 1);
 
             if (y % entity.planet.stripeSpacing == 0) {
-                ctx.fillStyle = colors[c + 1];
+                ctx.fillStyle = colors[firstColor + 1];
                 ctx.fillRect(-w, y, random() * 2 * w, 1);
             }
         }
@@ -262,11 +263,16 @@ const draw = () => {
 
     // Debug overlay
     if (dbg()) {
+        ctx.save();
         ctx.globalAlpha = 0.5;
+
+        // Origin
         for (let entity of entities.filter(e => e.position)) {
             ctx.fillStyle = entity.debugColor || "#f00";
             ctx.fillRect(entity.position.x, entity.position.y, 1, 1);
         }
+
+        // Velocity vector
         for (let entity of entities.filter(e => e.velocity)) {
             const end = Vec.add(entity.position, entity.velocity);
             ctx.strokeStyle = "#0f0";
@@ -275,13 +281,16 @@ const draw = () => {
             ctx.lineTo(end.x, end.y);
             ctx.stroke();
         }
+
+        // Planet radius
         for (let entity of entities.filter(e => e.planet)) {
             ctx.strokeStyle = "#f00";
             ctx.beginPath();
             ctx.arc(entity.position.x, entity.position.y, entity.planet.radius, 0, 2 * Math.PI);
             ctx.stroke();
         }
-        ctx.globalAlpha = 1;
+
+        ctx.restore();
     }
 
     ctx.restore();
@@ -303,6 +312,6 @@ const resize = () => {
     ctx.imageSmoothingEnabled = false;
 };
 window.addEventListener("resize", resize);
-resize();
 
+resize();
 draw();
