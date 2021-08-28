@@ -125,17 +125,29 @@ const update = () => {
         for (let planet of planets) {
             const between = Vec.subtract(planet.position, entity.position);
             const distance = Vec.length(between);
+            const collisionDistance = planet.planet.radius + entity.collision.radius;
 
             // Collision
-            if (entity.collision && distance < planet.planet.radius + entity.collision.radius) {
+            if (entity.collision && distance < collisionDistance) {
                 if (entity.collision.attach) {
+                    // Stop movement and rotation
                     entity.velocity = force = { x: 0, y: 0 };
                     entity.rotationalVelocity = 0;
+
+                    // Set exact position
+                    entity.position = Vec.add(
+                        planet.position,
+                        Vec.scale(Vec.normalize(between), -collisionDistance)
+                    );
+
+                    // Attach
                     entity.attachedTo = planet;
                     planet.attached.push(entity);
+
                     break;
                 } else {
-                    // TODO: Bounce off
+                    // TODO: Bounce off correctly
+                    entity.velocity = Vec.scale(entity.velocity, -1);
                 }
             }
 
@@ -208,7 +220,7 @@ const draw = () => {
         ctx.translate(-0.5, -0.5); // Make centered
 
         // Mid-point circle drawing
-        const width = {};
+        const width = { };
         const add = (x, y) => width[y] = y in width ? Math.max(width[y], x) : x;
         const r = entity.planet.radius;
         let x = r, y = 0;
@@ -312,6 +324,24 @@ const resize = () => {
     ctx.imageSmoothingEnabled = false;
 };
 window.addEventListener("resize", resize);
+
+// Jumping and boosting
+canvas.addEventListener("click", () => {
+    if (player.attachedTo) {
+        const parent = player.attachedTo;
+
+        // Move away from parent
+        const direction = Vec.normalize(Vec.scale(Vec.subtract(parent.position, player.position), -1));
+        player.position = Vec.add(player.position, direction);
+        player.velocity = Vec.scale(direction, 20);
+
+        // Remove attachment
+        parent.attached = parent.attached.filter(a => a !== player);
+        player.attachedTo = null;
+    } else {
+        // TODO: Boost
+    }
+});
 
 resize();
 draw();
