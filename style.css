@@ -4,6 +4,10 @@ body {
 	margin: 0;
 }
 
+#images {
+	display: none;
+}
+
 canvas {
 	position: absolute;
 	border-radius: 2vmin;
