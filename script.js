@@ -36,6 +36,10 @@ const camera = {
 
 const player = {
     debugColor: "#00f",
+    sprite: {
+        imageId: "wallaby",
+        scale: 0.25
+    },
     position: { x: 0, y: 0 },
     velocity: { x: 0, y: 0 },
     rotation: 0,
@@ -220,7 +224,7 @@ const draw = () => {
         ctx.translate(-0.5, -0.5); // Make centered
 
         // Mid-point circle drawing
-        const width = { };
+        const width = {};
         const add = (x, y) => width[y] = y in width ? Math.max(width[y], x) : x;
         const r = entity.planet.radius;
         let x = r, y = 0;
@@ -265,13 +269,19 @@ const draw = () => {
         ctx.restore();
     }
 
-    // Draw player
-    ctx.save();
-    ctx.translate(player.position.x, player.position.y);
-    ctx.rotate(player.rotation);
-    ctx.fillStyle = colors[4];
-    ctx.fillRect(-3, -3, 6, 6);
-    ctx.restore();
+    // Draw sprites
+    for (let entity of entities.filter(e => e.sprite)) {
+        ctx.save();
+        ctx.translate(entity.position.x, entity.position.y);
+        ctx.rotate(entity.rotation);
+
+        const image = document.getElementById(entity.sprite.imageId);
+        const size = Vec.scale({ x: image.naturalWidth, y: image.naturalHeight }, entity.sprite.scale);
+        ctx.translate(-size.x / 2, -size.y / 2); // Center image
+        ctx.drawImage(image, 0, 0, image.naturalWidth, image.naturalHeight, 0, 0, size.x, size.y);
+
+        ctx.restore();
+    }
 
     // Debug overlay
     if (dbg()) {
