@@ -103,7 +103,7 @@ const update = () => {
             entities.push({
                 position: Vec.floor(Vec.scale({ x: chunk.x + random() * 0.4, y: chunk.y + random() * 0.4 }, chunkSize)),
                 rotation: random() * 2 * Math.PI,
-                rotationalVelocity: (random() - 0.5) * 5,
+                rotationalVelocity: (random() * 3 + 1) * (random() < 0.5 ? 1 : -1),
                 planet: {
                     radius: Math.round((random() * 0.2 + 0.1) * chunkSize),
                     stripeSpacing: Math.ceil(random() * 3)
