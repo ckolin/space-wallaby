@@ -50,7 +50,7 @@ const player = {
     velocity: { x: 0, y: 0 },
     rotation: 0,
     rotationalVelocity: 0,
-    gravity: 0.5,
+    gravity: 0.8,
     collision: {
         radius: 2,
         attach: true
@@ -138,13 +138,13 @@ const update = () => {
         }
 
         // Create planet if needed
-        if (random() < 0.2) {
+        if (random() < 0.3) {
             entities.push({
                 position: Vec.floor(Vec.scale({ x: chunk.x + random() * 0.4, y: chunk.y + random() * 0.4 }, chunkSize)),
                 rotation: random() * 2 * Math.PI,
                 rotationalVelocity: (random() * 3 + 1) * (random() < 0.5 ? 1 : -1),
                 planet: {
-                    radius: Math.round((random() * 0.2 + 0.1) * chunkSize),
+                    radius: Math.ceil((random() * 0.2 + 0.05) * chunkSize),
                     stripeSpacing: Math.ceil(random() * 3)
                 },
                 attached: [],
