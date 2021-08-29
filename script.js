@@ -92,7 +92,8 @@ const update = () => {
         } else if (player.momentum > 0) {
             // TODO: Boost
             player.momentum -= 1 * delta;
-            player.velocity = Vec.scale(player.velocity, 1 + 1 * delta);
+            const forward = Vec.normalize(player.velocity);
+            player.velocity = Vec.add(player.velocity, Vec.scale(forward, 100 * delta));
         } else {
             input.action = false;
         }
