@@ -10,6 +10,11 @@ const dbg = (...objs) => {
     }
 };
 
+const input = {
+    action: false,
+    pause: false
+};
+
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 
@@ -40,11 +45,12 @@ const player = {
         imageId: "wallaby",
         scale: 0.25
     },
+    momentum: 0,
     position: { x: 0, y: 0 },
     velocity: { x: 0, y: 0 },
     rotation: 0,
     rotationalVelocity: 0,
-    gravity: 1,
+    gravity: 0.5,
     collision: {
         radius: 2,
         attach: true
@@ -56,17 +62,49 @@ let entities = [
     player
 ];
 
-let paused = false;
-
 let lastUpdate = Date.now();
 const update = () => {
     const now = Date.now();
     const delta = (now - lastUpdate) / 1000;
     lastUpdate = now;
 
-    if (paused) {
+    if (input.pause) {
         return;
     }
+
+    // Jumping and boosting
+    if (input.action) {
+        if (player.attachedTo) {
+            const parent = player.attachedTo;
+
+            const direction = Vec.normalize(Vec.scale(Vec.subtract(parent.position, player.position), -1));
+            player.position = Vec.add(player.position, direction); // Move out of collision
+            player.velocity = Vec.rotate(
+                Vec.scale(direction, 30 + 50 * player.momentum),
+                parent.rotationalVelocity * delta
+            );
+
+            // Remove attachment
+            parent.attached = parent.attached.filter(a => a !== player);
+            player.attachedTo = null;
+
+            input.action = false;
+        } else if (player.momentum > 0) {
+            // TODO: Boost
+            player.momentum -= 1 * delta;
+            player.velocity = Vec.scale(player.velocity, 1 + 1 * delta);
+        } else {
+            input.action = false;
+        }
+    }
+
+    // Momentum
+    if (player.attachedTo) {
+        player.momentum -= 0.2 * delta;
+    } else {
+        player.momentum += 0.1 * delta;
+    }
+    player.momentum = Math.max(0, Math.min(1, player.momentum));
 
     // Find active chunks
     const previousChunks = chunks;
@@ -159,7 +197,7 @@ const update = () => {
                 force,
                 Vec.scale(
                     Vec.scale(between, 1 / distance),
-                    planet.planet.radius ** 2 / distance
+                    planet.planet.radius ** 3 / distance
                 )
             );
         }
@@ -317,12 +355,42 @@ const draw = () => {
 
     ctx.restore();
 
+    // Draw hud
+    ctx.fillStyle = colors[7];
+    ctx.fillRect(0, 0, canvas.width * player.momentum, 12);
+
     requestAnimationFrame(draw);
 };
 
-// Pause
-window.addEventListener("blur", () => paused = true);
-window.addEventListener("focus", () => paused = false);
+// Input
+window.addEventListener("blur", () => input.pause = true);
+window.addEventListener("focus", () => input.pause = false);
+
+canvas.addEventListener("mousedown", () => input.action = true);
+canvas.addEventListener("mouseup", () => input.action = false);
+
+canvas.addEventListener("touchstart", () => input.action = true);
+canvas.addEventListener("touchend", () => input.action = false);
+
+document.addEventListener("keydown", (e) => {
+    if (e.repeat) {
+        return;
+    }
+
+    if (e.key === " ") {
+        input.action = true;
+    }
+});
+
+document.addEventListener("keyup", (e) => {
+    if (e.repeat) {
+        return;
+    }
+
+    if (e.key === " ") {
+        input.action = false;
+    }
+});
 
 // Canvas resizing
 const resize = () => {
@@ -334,24 +402,6 @@ const resize = () => {
     ctx.imageSmoothingEnabled = false;
 };
 window.addEventListener("resize", resize);
-
-// Jumping and boosting
-canvas.addEventListener("click", () => {
-    if (player.attachedTo) {
-        const parent = player.attachedTo;
-
-        // Move away from parent
-        const direction = Vec.normalize(Vec.scale(Vec.subtract(parent.position, player.position), -1));
-        player.position = Vec.add(player.position, direction);
-        player.velocity = Vec.scale(direction, 20);
-
-        // Remove attachment
-        parent.attached = parent.attached.filter(a => a !== player);
-        player.attachedTo = null;
-    } else {
-        // TODO: Boost
-    }
-});
 
 resize();
 draw();
