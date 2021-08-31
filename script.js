@@ -43,7 +43,7 @@ const player = {
     debugColor: "#00f",
     sprite: {
         imageId: "wallaby",
-        scale: 0.25
+        scale: 0.5
     },
     momentum: 0,
     position: { x: 0, y: 0 },
