@@ -32,11 +32,11 @@ const chunkSize = 42;
 let chunks = [];
 
 const camera = {
-    position: { x: 0, y: 0 },
-    velocity: { x: 0, y: 0 },
     size: 1,
     minSize: 100,
-    maxSize: 200
+    maxSize: 200,
+    position: { x: 0, y: 0 },
+    velocity: { x: 0, y: 0 }
 };
 
 const player = {
@@ -46,6 +46,11 @@ const player = {
         scale: 0.5
     },
     momentum: 0,
+    jumpSpeed: 30,
+    bonusJumpSpeed: 50,
+    boostSpeed: 100,
+    attachedMomentumFactor: -0.2,
+    floatingMomentumFactor: 0.1,
     position: { x: 0, y: 0 },
     velocity: { x: 0, y: 0 },
     rotation: 0,
@@ -80,7 +85,7 @@ const update = () => {
             const direction = Vec.normalize(Vec.scale(Vec.subtract(parent.position, player.position), -1));
             player.position = Vec.add(player.position, direction); // Move out of collision
             player.velocity = Vec.rotate(
-                Vec.scale(direction, 30 + 50 * player.momentum),
+                Vec.scale(direction, player.jumpSpeed + player.bonusJumpSpeed * player.momentum),
                 parent.rotationalVelocity * delta
             );
 
@@ -93,7 +98,7 @@ const update = () => {
             // TODO: Boost
             player.momentum -= 1 * delta;
             const forward = Vec.normalize(player.velocity);
-            player.velocity = Vec.add(player.velocity, Vec.scale(forward, 100 * delta));
+            player.velocity = Vec.add(player.velocity, Vec.scale(forward, player.boostSpeed * delta));
         } else {
             input.action = false;
         }
@@ -101,9 +106,9 @@ const update = () => {
 
     // Momentum
     if (player.attachedTo) {
-        player.momentum -= 0.2 * delta;
+        player.momentum += player.attachedMomentumFactor * delta;
     } else {
-        player.momentum += 0.1 * delta;
+        player.momentum += player.floatingMomentumFactor * delta;
     }
     player.momentum = Math.max(0, Math.min(1, player.momentum));
 
@@ -120,6 +125,8 @@ const update = () => {
     // Remove entities belonging to inactive chunks
     entities = entities.filter(e => !e.chunk || chunks.some(c => c.x === e.chunk.x && c.y === e.chunk.y));
 
+    // TODO: Remove spaceship too far out of view
+
     // Generate new chunks
     const newChunks = chunks.filter(c => !previousChunks.some(p => p.x === c.x && p.y === c.y));
     for (let chunk of newChunks) {
@@ -129,27 +136,48 @@ const update = () => {
         const numStars = random() * 4;
         for (let i = 0; i < numStars; i++) {
             entities.push({
-                position: Vec.scale({ x: chunk.x + random(), y: chunk.y + random() }, chunkSize),
                 star: {
                     size: Math.ceil(random() * 2),
                 },
-                chunk
+                chunk,
+                position: Vec.scale({ x: chunk.x + random(), y: chunk.y + random() }, chunkSize)
             });
         }
 
         // Create planet if needed
         if (random() < 0.3) {
             entities.push({
-                position: Vec.floor(Vec.scale({ x: chunk.x + random() * 0.4, y: chunk.y + random() * 0.4 }, chunkSize)),
-                rotation: random() * 2 * Math.PI,
-                rotationalVelocity: (random() * 3 + 1) * (random() < 0.5 ? 1 : -1),
                 planet: {
                     radius: Math.ceil((random() * 0.2 + 0.05) * chunkSize),
                     stripeSpacing: Math.ceil(random() * 3)
                 },
                 attached: [],
-                chunk
+                chunk,
+                position: Vec.floor(Vec.scale({ x: chunk.x + random() * 0.4, y: chunk.y + random() * 0.4 }, chunkSize)),
+                rotation: random() * 2 * Math.PI,
+                rotationalVelocity: (random() * 3 + 1) * (random() < 0.5 ? 1 : -1)
             });
+        }
+
+        // Create spaceship if needed
+        if (Math.random() < 0.01) {
+            entities.push({
+                spaceship: {
+                    speed: 10,
+                },
+                sprite: {
+                    imageId: "spaceship",
+                    scale: 0.75
+                },
+                position: Vec.scale({ x: chunk.x, y: chunk.y }, chunkSize),
+                velocity: { x: Math.random() * 10, y: 0 },
+                rotation: random() * 2 * Math.PI,
+                rotationalVelocity: 0,
+                collision: {
+                    radius: 4,
+                    attach: false
+                }
+            })
         }
     }
 
@@ -159,19 +187,33 @@ const update = () => {
 
     // Gravity
     const planets = entities.filter(e => e.planet);
-    for (let entity of entities.filter(e => e.gravity)) {
-        if (entity.attachedTo) {
-            continue; // Skip attached entity
-        }
-
+    for (let entity of entities.filter(e => e.gravity && !e.attachedTo)) {
         let force = { x: 0, y: 0 };
+
         for (let planet of planets) {
             const between = Vec.subtract(planet.position, entity.position);
             const distance = Vec.length(between);
+
+            force = Vec.add(
+                force,
+                Vec.scale(
+                    Vec.normalize(between),
+                    planet.planet.radius ** 3 / distance
+                )
+            );
+        }
+
+        entity.velocity = Vec.add(entity.velocity, Vec.scale(force, entity.gravity * delta));
+    }
+
+    // Collision
+    for (let entity of entities.filter(e => e.collision && !e.attachedTo)) {
+        for (let planet of planets) {
+            const between = Vec.subtract(planet.position, entity.position);
             const collisionDistance = planet.planet.radius + entity.collision.radius;
 
             // Collision
-            if (entity.collision && distance < collisionDistance) {
+            if (entity.collision && Vec.length(between) < collisionDistance) {
                 if (entity.collision.attach) {
                     // Stop movement and rotation
                     entity.velocity = force = { x: 0, y: 0 };
@@ -189,21 +231,13 @@ const update = () => {
 
                     break;
                 } else {
-                    // TODO: Bounce off correctly
+                    // TODO: Bounce off correctly, move out of collision
                     entity.velocity = Vec.scale(entity.velocity, -1);
                 }
+
+                break;
             }
-
-            force = Vec.add(
-                force,
-                Vec.scale(
-                    Vec.scale(between, 1 / distance),
-                    planet.planet.radius ** 3 / distance
-                )
-            );
         }
-
-        entity.velocity = Vec.add(entity.velocity, Vec.scale(force, entity.gravity * delta));
     }
 
     // Velocity
