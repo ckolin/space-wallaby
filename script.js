@@ -18,10 +18,12 @@ const input = {
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 
-// NYX8 by Javier Guerrero (https://lospec.com/palette-list/nyx8)
+// Steam Lords by Slynyrd (https://lospec.com/palette-list/steam-lords)
 const colors = [
-    "#08141e", "#0f2a3f", "#20394f", "#f6d6bd",
-    "#c3a38a", "#997577", "#816271", "#4e495f",
+    "#213b25", "#3a604a", "#4f7754", "#a19f7c",
+    "#77744f", "#775c4f", "#603b3a", "#3b2137",
+    "#170e19", "#2f213b", "#433a60", "#4f5277",
+    "#65738c", "#7c94a1", "#a0b9ba", "#c0d1cc"
 ];
 
 const seed = Date.now();
@@ -139,6 +141,7 @@ const update = () => {
             entities.push({
                 star: {
                     size: Math.ceil(random() * 2),
+                    color: colors[Math.floor(random() * 2 + 9)]
                 },
                 chunk,
                 position: Vec.scale({ x: chunk.x + random(), y: chunk.y + random() }, chunkSize)
@@ -147,10 +150,15 @@ const update = () => {
 
         // Create planet if needed
         if (random() < 0.3) {
+            const startColors = [0, 1, 3, 4, 5, 6, 10, 11, 12];
+            const startColor = startColors[Math.floor(random() * startColors.length)];
+
             entities.push({
                 planet: {
                     radius: Math.ceil((random() * 0.2 + 0.05) * chunkSize),
-                    stripeSpacing: Math.ceil(random() * 3)
+                    stripeSpacing: Math.ceil(random() * 3),
+                    firstColor: colors[startColor],
+                    secondColor: colors[startColor + 1]
                 },
                 attached: [],
                 chunk,
@@ -274,7 +282,7 @@ const draw = () => {
     update();
 
     // Draw backgruond
-    ctx.fillStyle = colors[0];
+    ctx.fillStyle = colors[8];
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     // Center around camera
@@ -285,8 +293,8 @@ const draw = () => {
     ctx.translate(-topLeft.x, -topLeft.y);
 
     // Draw stars
-    ctx.fillStyle = colors[1];
     for (let entity of entities.filter(e => e.star)) {
+        ctx.fillStyle = entity.star.color;
         ctx.fillRect(entity.position.x, entity.position.y, entity.star.size, entity.star.size);
     }
 
@@ -328,14 +336,13 @@ const draw = () => {
         }
 
         const random = chunkRandom(entity.chunk);
-        const firstColor = Math.round(random()) + 5;
         for (let y = -r; y <= r; y++) {
             const w = width[y];
-            ctx.fillStyle = colors[firstColor];
+            ctx.fillStyle = entity.planet.firstColor;
             ctx.fillRect(-w, y, 2 * w + 1, 1);
 
             if (y % entity.planet.stripeSpacing == 0) {
-                ctx.fillStyle = colors[firstColor + 1];
+                ctx.fillStyle = entity.planet.secondColor;
                 ctx.fillRect(-w, y, random() * 2 * w, 1);
             }
         }
@@ -392,7 +399,7 @@ const draw = () => {
     ctx.restore();
 
     // Draw hud
-    ctx.fillStyle = colors[7];
+    ctx.fillStyle = colors[11];
     ctx.fillRect(0, 0, canvas.width * player.momentum, 12);
 
     requestAnimationFrame(draw);
