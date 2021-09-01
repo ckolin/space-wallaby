@@ -165,6 +165,7 @@ const update = () => {
                 attached: [],
                 chunk,
                 position: Vec.floor(Vec.scale({ x: chunk.x + random() * 0.4, y: chunk.y + random() * 0.4 }, chunkSize)),
+                velocity: { x: 0, y: 0 },
                 rotation: random() * 2 * Math.PI,
                 rotationalVelocity: (random() * 3 + 1) * (random() < 0.5 ? 1 : -1)
             });
@@ -185,10 +186,10 @@ const update = () => {
                 rotation: random() * 2 * Math.PI,
                 rotationalVelocity: 0,
                 collision: {
-                    radius: 4,
+                    radius: 8,
                     attach: false
                 }
-            })
+            });
         }
     }
 
@@ -253,8 +254,26 @@ const update = () => {
 
                     break;
                 } else {
-                    // TODO: Bounce off correctly, move out of collision
-                    entity.velocity = Vec.scale(entity.velocity, -1);
+                    // Resolve collision
+                    const normal = Vec.normalize(Vec.subtract(planet.position, entity.position));
+                    const rel = Vec.subtract(entity.velocity, planet.velocity);
+
+                    if (Vec.dot(rel, normal) < 0) {
+                        continue; // Entities are alrady moving apart
+                    }
+
+                    const tangent = Vec.normalize(
+                        Vec.multiply(
+                            Vec.flip(Vec.subtract(planet.position, entity.position)),
+                            { x: 1, y: -1 }
+                        )
+                    );
+                    const paraLen = Vec.dot(rel, tangent);
+                    const para = Vec.scale(tangent, paraLen);
+                    const perp = Vec.scale(Vec.subtract(rel, para), 1);
+
+                    entity.velocity = Vec.scale(perp, -3 / 4);
+                    planet.velocity = Vec.scale(perp, 1 / 4);
                 }
 
                 break;
