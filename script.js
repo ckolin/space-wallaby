@@ -32,7 +32,7 @@ const chunkSize = 42;
 let chunks = [];
 
 const camera = {
-    size: 1,
+    size: 100,
     minSize: 100,
     maxSize: 200,
     position: { x: 0, y: 0 },
@@ -125,7 +125,8 @@ const update = () => {
     // Remove entities belonging to inactive chunks
     entities = entities.filter(e => !e.chunk || chunks.some(c => c.x === e.chunk.x && c.y === e.chunk.y));
 
-    // TODO: Remove spaceship too far out of view
+    // Remove entities too far out of view
+    entities = entities.filter(e => Vec.distance(e.position, camera.position) < camera.size * 2);
 
     // Generate new chunks
     const newChunks = chunks.filter(c => !previousChunks.some(p => p.x === c.x && p.y === c.y));
