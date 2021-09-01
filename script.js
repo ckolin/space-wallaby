@@ -451,8 +451,8 @@ document.addEventListener("keyup", (e) => {
 
 // Canvas resizing
 const resize = () => {
-    const unit = 64;
-    const size = Math.min(Math.floor(Math.min(window.innerWidth, window.innerHeight) / unit), 12);
+    const unit = 32;
+    const size = Math.min(Math.floor(Math.min(window.innerWidth, window.innerHeight) / unit), 24);
     canvas.width = canvas.height = size * unit;
     canvas.style.left = `${(window.innerWidth - canvas.width) / 2}px`;
     canvas.style.top = `${(window.innerHeight - canvas.height) / 2}px`;
