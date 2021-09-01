@@ -44,7 +44,6 @@ const camera = {
 };
 
 const player = {
-    debugColor: "#00f",
     sprite: {
         imageId: "wallaby",
         scale: 0.5
@@ -62,7 +61,7 @@ const player = {
     rotationalVelocity: 0,
     gravity: 0.8,
     collision: {
-        radius: 2,
+        radius: 4,
         attach: true
     }
 };
@@ -320,7 +319,7 @@ const draw = () => {
         ctx.translate(-0.5, -0.5); // Make centered
 
         // Mid-point circle drawing
-        const width = {};
+        const width = { };
         const add = (x, y) => width[y] = y in width ? Math.max(width[y], x) : x;
         const r = entity.planet.radius;
         let x = r, y = 0;
@@ -385,8 +384,16 @@ const draw = () => {
 
         // Origin
         for (let entity of entities.filter(e => e.position)) {
-            ctx.fillStyle = entity.debugColor || "#f00";
+            ctx.fillStyle = "#f00";
             ctx.fillRect(entity.position.x, entity.position.y, 1, 1);
+        }
+
+        // Collision radius
+        for (let entity of entities.filter(e => e.collision)) {
+            ctx.strokeStyle = "#00f";
+            ctx.beginPath();
+            ctx.arc(entity.position.x, entity.position.y, entity.collision.radius, 0, 2 * Math.PI);
+            ctx.stroke();
         }
 
         // Velocity vector
