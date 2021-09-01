@@ -37,6 +37,8 @@ const camera = {
     size: 100,
     minSize: 100,
     maxSize: 200,
+    playerDistanceSizeFactor: 4,
+    speed: 2,
     position: { x: 0, y: 0 },
     velocity: { x: 0, y: 0 }
 };
@@ -49,10 +51,11 @@ const player = {
     },
     momentum: 0,
     jumpSpeed: 30,
-    bonusJumpSpeed: 50,
-    boostSpeed: 100,
+    bonusJumpSpeed: 40,
+    boostSpeed: 80,
     attachedMomentumFactor: -0.2,
     floatingMomentumFactor: 0.1,
+    boostingMomentumFactor: -0.8,
     position: { x: 0, y: 0 },
     velocity: { x: 0, y: 0 },
     rotation: 0,
@@ -97,8 +100,8 @@ const update = () => {
 
             input.action = false;
         } else if (player.momentum > 0) {
-            // TODO: Boost
-            player.momentum -= 1 * delta;
+            // TODO: Boost particles
+            player.momentum += player.boostingMomentumFactor * delta;
             const forward = Vec.normalize(player.velocity);
             player.velocity = Vec.add(player.velocity, Vec.scale(forward, player.boostSpeed * delta));
         } else {
@@ -191,8 +194,17 @@ const update = () => {
     }
 
     // Camera
-    camera.velocity = Vec.add(Vec.scale(player.velocity, 0.5), Vec.subtract(player.position, camera.position));
-    camera.size = Math.min(camera.maxSize, Vec.distance2(player.position, camera.position) + camera.minSize);
+    camera.velocity = Vec.scale(
+        Vec.add(
+            Vec.scale(player.velocity, 0.2),
+            Vec.subtract(player.position, camera.position)
+        ),
+        camera.speed
+    );
+    camera.size = Math.min(
+        camera.maxSize,
+        Vec.distance(player.position, camera.position) * camera.playerDistanceSizeFactor + camera.minSize
+    );
 
     // Gravity
     const planets = entities.filter(e => e.planet);
@@ -237,6 +249,8 @@ const update = () => {
                     // Attach
                     entity.attachedTo = planet;
                     planet.attached.push(entity);
+
+                    // TODO: Activate planet spring physics, using same calculations as for bounce.
 
                     break;
                 } else {
