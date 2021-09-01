@@ -81,41 +81,6 @@ const update = () => {
         return;
     }
 
-    // Jumping and boosting
-    if (input.action) {
-        if (player.attachedTo) {
-            const parent = player.attachedTo;
-
-            const direction = Vec.normalize(Vec.scale(Vec.subtract(parent.position, player.position), -1));
-            player.position = Vec.add(player.position, direction); // Move out of collision
-            player.velocity = Vec.rotate(
-                Vec.scale(direction, player.jumpSpeed + player.bonusJumpSpeed * player.momentum),
-                parent.rotationalVelocity * delta
-            );
-
-            // Remove attachment
-            parent.attached = parent.attached.filter(a => a !== player);
-            player.attachedTo = null;
-
-            input.action = false;
-        } else if (player.momentum > 0) {
-            // TODO: Boost particles
-            player.momentum += player.boostingMomentumFactor * delta;
-            const forward = Vec.normalize(player.velocity);
-            player.velocity = Vec.add(player.velocity, Vec.scale(forward, player.boostSpeed * delta));
-        } else {
-            input.action = false;
-        }
-    }
-
-    // Momentum
-    if (player.attachedTo) {
-        player.momentum += player.attachedMomentumFactor * delta;
-    } else {
-        player.momentum += player.floatingMomentumFactor * delta;
-    }
-    player.momentum = Math.max(0, Math.min(1, player.momentum));
-
     // Find active chunks
     const previousChunks = chunks;
     chunks = [];
@@ -152,7 +117,8 @@ const update = () => {
 
         // Create planet if needed
         if (random() < 0.3) {
-            const startColors = [0, 1, 3, 4, 5, 6, 10, 11, 12];
+            const position = Vec.floor(Vec.scale({ x: chunk.x + random() * 0.4, y: chunk.y + random() * 0.4 }, chunkSize));
+            const startColors = [0, 1, 3, 6, 10, 11, 12];
             const startColor = startColors[Math.floor(random() * startColors.length)];
 
             entities.push({
@@ -164,7 +130,12 @@ const update = () => {
                 },
                 attached: [],
                 chunk,
-                position: Vec.floor(Vec.scale({ x: chunk.x + random() * 0.4, y: chunk.y + random() * 0.4 }, chunkSize)),
+                spring: {
+                    origin: position,
+                    stiffness: 0.1
+                },
+                damping: 0.8,
+                position,
                 velocity: { x: 0, y: 0 },
                 rotation: random() * 2 * Math.PI,
                 rotationalVelocity: (random() * 3 + 1) * (random() < 0.5 ? 1 : -1)
@@ -206,6 +177,41 @@ const update = () => {
         Vec.distance(player.position, camera.position) * camera.playerDistanceSizeFactor + camera.minSize
     );
 
+    // Player jumping and boosting
+    if (input.action) {
+        if (player.attachedTo) {
+            const parent = player.attachedTo;
+
+            const direction = Vec.normalize(Vec.scale(Vec.subtract(parent.position, player.position), -1));
+            player.position = Vec.add(player.position, direction); // Move out of collision
+            player.velocity = Vec.rotate(
+                Vec.scale(direction, player.jumpSpeed + player.bonusJumpSpeed * player.momentum),
+                parent.rotationalVelocity * delta
+            );
+
+            // Remove attachment
+            parent.attached = parent.attached.filter(a => a !== player);
+            player.attachedTo = null;
+
+            input.action = false;
+        } else if (player.momentum > 0) {
+            // TODO: Boost particles
+            player.momentum += player.boostingMomentumFactor * delta;
+            const forward = Vec.normalize(player.velocity);
+            player.velocity = Vec.add(player.velocity, Vec.scale(forward, player.boostSpeed * delta));
+        } else {
+            input.action = false;
+        }
+    }
+
+    // Player momentum
+    if (player.attachedTo) {
+        player.momentum += player.attachedMomentumFactor * delta;
+    } else {
+        player.momentum += player.floatingMomentumFactor * delta;
+    }
+    player.momentum = Math.max(0, Math.min(1, player.momentum));
+
     // Gravity
     const planets = entities.filter(e => e.planet);
     for (let entity of entities.filter(e => e.gravity && !e.attachedTo)) {
@@ -236,6 +242,23 @@ const update = () => {
             // Collision
             if (entity.collision && Vec.length(between) < collisionDistance) {
                 if (entity.collision.attach) {
+                    if (entity === player) {
+                        input.action = false;
+                    }
+
+                    // Make planet wobble
+                    const rel = Vec.subtract(entity.velocity, planet.velocity);
+                    const tangent = Vec.normalize(
+                        Vec.multiply(
+                            Vec.flip(Vec.subtract(planet.position, entity.position)),
+                            { x: 1, y: -1 }
+                        )
+                    );
+                    const paraLen = Vec.dot(rel, tangent);
+                    const para = Vec.scale(tangent, paraLen);
+                    const perp = Vec.scale(Vec.subtract(rel, para), 1);
+                    planet.velocity = Vec.scale(perp, 1 / 4);
+
                     // Stop movement and rotation
                     entity.velocity = force = { x: 0, y: 0 };
                     entity.rotationalVelocity = 0;
@@ -249,8 +272,6 @@ const update = () => {
                     // Attach
                     entity.attachedTo = planet;
                     planet.attached.push(entity);
-
-                    // TODO: Activate planet spring physics, using same calculations as for bounce.
 
                     break;
                 } else {
@@ -292,6 +313,22 @@ const update = () => {
                 attached.position = Vec.add(attached.position, translation);
             }
         }
+    }
+
+    // Spring
+    for (let entity of entities.filter(e => e.spring)) {
+        entity.velocity = Vec.add(
+            entity.velocity,
+            Vec.scale(
+                Vec.subtract(entity.spring.origin, entity.position),
+                entity.spring.stiffness
+            )
+        );
+    }
+
+    // Damping
+    for (let entity of entities.filter(e => e.damping)) {
+        entity.velocity = Vec.scale(entity.velocity, 1 - entity.damping * delta);
     }
 
     // Rotation
