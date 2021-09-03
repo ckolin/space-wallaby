@@ -74,7 +74,8 @@ let entities = [
 let lastUpdate = Date.now();
 const update = () => {
     const now = Date.now();
-    const delta = (now - lastUpdate) / 1000;
+    const deltaMs = now - lastUpdate;
+    const delta = deltaMs / 1000;
     lastUpdate = now;
 
     if (input.pause) {
@@ -195,10 +196,23 @@ const update = () => {
 
             input.action = false;
         } else if (player.momentum > 0) {
-            // TODO: Boost particles
             player.momentum += player.boostingMomentumFactor * delta;
             const forward = Vec.normalize(player.velocity);
             player.velocity = Vec.add(player.velocity, Vec.scale(forward, player.boostSpeed * delta));
+
+            // Spawn particles
+            for (let i = 0; i < deltaMs / 2; i++) {
+                entities.push({
+                    particle: {
+                        color: colors[15],
+                        size: Math.random() + 0.5
+                    },
+                    age: 0,
+                    lifetime: Math.random() * 500 + 200,
+                    position: player.position,
+                    velocity: Vec.scale(Vec.rotate(forward, (Math.random() - 0.5) * 2), -(Math.random() * 10 + 10))
+                });
+            }
         } else {
             input.action = false;
         }
@@ -211,6 +225,12 @@ const update = () => {
         player.momentum += player.floatingMomentumFactor * delta;
     }
     player.momentum = Math.max(0, Math.min(1, player.momentum));
+
+    // Lifetime
+    for (let entity of entities.filter(e => e.lifetime)) {
+        entity.age += deltaMs;
+    }
+    entities = entities.filter(e => !e.lifetime || e.lifetime > e.age);
 
     // Gravity
     const planets = entities.filter(e => e.planet);
@@ -375,7 +395,7 @@ const draw = () => {
         ctx.translate(-0.5, -0.5); // Make centered
 
         // Mid-point circle drawing
-        const width = { };
+        const width = {};
         const add = (x, y) => width[y] = y in width ? Math.max(width[y], x) : x;
         const r = entity.planet.radius;
         let x = r, y = 0;
@@ -416,6 +436,15 @@ const draw = () => {
             }
         }
 
+        ctx.restore();
+    }
+
+    // Draw particles
+    for (let entity of entities.filter(e => e.particle)) {
+        ctx.save();
+        ctx.globalAlpha = 1 - entity.age / entity.lifetime;
+        ctx.fillStyle = entity.particle.color;
+        ctx.fillRect(entity.position.x, entity.position.y, entity.particle.size, entity.particle.size);
         ctx.restore();
     }
 
