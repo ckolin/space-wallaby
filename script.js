@@ -135,9 +135,9 @@ const update = () => {
                     origin: position,
                     stiffness: 0.1
                 },
-                damping: 0.8,
                 position,
                 velocity: { x: 0, y: 0 },
+                damping: 0.8,
                 rotation: random() * 2 * Math.PI,
                 rotationalVelocity: (random() * 3 + 1) * (random() < 0.5 ? 1 : -1)
             });
@@ -346,11 +346,6 @@ const update = () => {
         );
     }
 
-    // Damping
-    for (let entity of entities.filter(e => e.damping)) {
-        entity.velocity = Vec.scale(entity.velocity, 1 - entity.damping * delta);
-    }
-
     // Rotation
     for (let entity of entities.filter(e => e.rotationalVelocity)) {
         const rotation = entity.rotationalVelocity * delta
@@ -364,6 +359,14 @@ const update = () => {
                 attached.rotation += rotation;
             }
         }
+    }
+
+    // Damping
+    for (let entity of entities.filter(e => e.damping)) {
+        entity.velocity = Vec.scale(entity.velocity, 1 - entity.damping * delta);
+    }
+    for (let entity of entities.filter(e => e.rotationalDamping)) {
+        entity.rotationalVelocity *= 1 - entity.rotationalDamping * delta;
     }
 };
 
