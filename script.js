@@ -253,72 +253,72 @@ const update = () => {
         entity.velocity = Vec.add(entity.velocity, Vec.scale(force, entity.gravity * delta));
     }
 
-    // Collision
+    // Planet collision
     for (let entity of entities.filter(e => e.collision && !e.attachedTo)) {
         for (let planet of planets) {
             const between = Vec.subtract(planet.position, entity.position);
             const collisionDistance = planet.planet.radius + entity.collision.radius;
 
-            // Collision
-            if (entity.collision && Vec.length(between) < collisionDistance) {
-                if (entity.collision.attach) {
-                    if (entity === player) {
-                        input.action = false;
-                    }
+            if (!entity.collision || Vec.length(between) > collisionDistance) {
+                continue; // Collision disabled or too far away
+            }
 
-                    // Make planet wobble
-                    const rel = Vec.subtract(entity.velocity, planet.velocity);
-                    const tangent = Vec.normalize(
-                        Vec.multiply(
-                            Vec.flip(Vec.subtract(planet.position, entity.position)),
-                            { x: 1, y: -1 }
-                        )
-                    );
-                    const paraLen = Vec.dot(rel, tangent);
-                    const para = Vec.scale(tangent, paraLen);
-                    const perp = Vec.scale(Vec.subtract(rel, para), 1);
-                    planet.velocity = Vec.scale(perp, 1 / 4);
-
-                    // Stop movement and rotation
-                    entity.velocity = force = { x: 0, y: 0 };
-                    entity.rotationalVelocity = 0;
-
-                    // Set exact position
-                    entity.position = Vec.add(
-                        planet.position,
-                        Vec.scale(Vec.normalize(between), -collisionDistance)
-                    );
-
-                    // Attach
-                    entity.attachedTo = planet;
-                    planet.attached.push(entity);
-
-                    break;
-                } else {
-                    // Resolve collision
-                    const normal = Vec.normalize(Vec.subtract(planet.position, entity.position));
-                    const rel = Vec.subtract(entity.velocity, planet.velocity);
-
-                    if (Vec.dot(rel, normal) < 0) {
-                        continue; // Entities are alrady moving apart
-                    }
-
-                    const tangent = Vec.normalize(
-                        Vec.multiply(
-                            Vec.flip(Vec.subtract(planet.position, entity.position)),
-                            { x: 1, y: -1 }
-                        )
-                    );
-                    const paraLen = Vec.dot(rel, tangent);
-                    const para = Vec.scale(tangent, paraLen);
-                    const perp = Vec.scale(Vec.subtract(rel, para), 1);
-
-                    entity.velocity = Vec.scale(perp, -3 / 4);
-                    planet.velocity = Vec.scale(perp, 1 / 4);
+            if (entity.collision.attach) {
+                // Stop player from jumping again
+                if (entity === player) {
+                    input.action = false;
                 }
 
-                break;
+                // Make planet wobble
+                const rel = Vec.subtract(entity.velocity, planet.velocity);
+                const tangent = Vec.normalize(
+                    Vec.multiply(
+                        Vec.flip(Vec.subtract(planet.position, entity.position)),
+                        { x: 1, y: -1 }
+                    )
+                );
+                const paraLen = Vec.dot(rel, tangent);
+                const para = Vec.scale(tangent, paraLen);
+                const perp = Vec.scale(Vec.subtract(rel, para), 1);
+                planet.velocity = Vec.scale(perp, 1 / 4);
+
+                // Stop movement and rotation
+                entity.velocity = force = { x: 0, y: 0 };
+                entity.rotationalVelocity = 0;
+
+                // Set exact position
+                entity.position = Vec.add(
+                    planet.position,
+                    Vec.scale(Vec.normalize(between), -collisionDistance)
+                );
+
+                // Attach
+                entity.attachedTo = planet;
+                planet.attached.push(entity);
+            } else {
+                // Resolve collision
+                const normal = Vec.normalize(Vec.subtract(planet.position, entity.position));
+                const rel = Vec.subtract(entity.velocity, planet.velocity);
+
+                if (Vec.dot(rel, normal) < 0) {
+                    continue; // Entities are alrady moving apart
+                }
+
+                const tangent = Vec.normalize(
+                    Vec.multiply(
+                        Vec.flip(Vec.subtract(planet.position, entity.position)),
+                        { x: 1, y: -1 }
+                    )
+                );
+                const paraLen = Vec.dot(rel, tangent);
+                const para = Vec.scale(tangent, paraLen);
+                const perp = Vec.scale(Vec.subtract(rel, para), 1);
+
+                entity.velocity = Vec.scale(perp, -3 / 4);
+                planet.velocity = Vec.scale(perp, 1 / 4);
             }
+
+            break;
         }
     }
 
