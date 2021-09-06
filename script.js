@@ -26,12 +26,24 @@ const colors = [
     "#65738c", "#7c94a1", "#a0b9ba", "#c0d1cc"
 ];
 
+// Seeded random number generator
 const seed = Date.now();
 const seededRandom = s => () => (2 ** 31 - 1 & (s = Math.imul(48271, s + seed))) / 2 ** 31;
-const chunkRandom = c => seededRandom(c.y * 1e9 + c.x * 1e6);
 
+// Chunk system for procedural generation
 const chunkSize = 42;
 let chunks = [];
+
+// Things that need to be generated in a certain chunk
+let specials = {
+    0: {
+        planet: false
+    },
+    1: {
+        joey: true,
+        planet: true
+    }
+};
 
 const camera = {
     size: 100,
@@ -88,37 +100,46 @@ const update = () => {
     const topLeft = Vec.add(camera.position, Vec.scale({ x: 1, y: 1 }, -camera.size / 2));
     for (let x = Math.floor(topLeft.x / chunkSize) - 1; (x - 1) * chunkSize < Math.ceil(topLeft.x + camera.size); x++) {
         for (let y = Math.floor(topLeft.y / chunkSize) - 1; (y - 1) * chunkSize < Math.ceil(topLeft.y + camera.size); y++) {
-            chunks.push({ x, y });
+            chunks.push({ id: y * 1e9 + x, x, y });
         }
     }
 
     // Remove entities belonging to inactive chunks
-    entities = entities.filter(e => !e.chunk || chunks.some(c => c.x === e.chunk.x && c.y === e.chunk.y));
+    entities = entities.filter(e => !e.chunkId || chunks.some(c => c.id === e.chunkId));
 
     // Remove entities too far out of view
     entities = entities.filter(e => Vec.distance(e.position, camera.position) < camera.size * 2);
 
     // Generate new chunks
-    const newChunks = chunks.filter(c => !previousChunks.some(p => p.x === c.x && p.y === c.y));
+    const newChunks = chunks.filter(c => !previousChunks.some(p => p.id === c.id));
     for (let chunk of newChunks) {
-        const random = chunkRandom(chunk);
+        const random = seededRandom(chunk.id);
+        const chunkOrigin = Vec.scale(chunk, chunkSize);
+        const special = specials[chunk.id];
 
         // Create stars
-        const numStars = random() * 4;
-        for (let i = 0; i < numStars; i++) {
-            entities.push({
-                star: {
-                    size: Math.ceil(random() * 2),
-                    color: colors[Math.floor(random() * 2 + 9)]
-                },
-                chunk,
-                position: Vec.scale({ x: chunk.x + random(), y: chunk.y + random() }, chunkSize)
-            });
+        if (special?.stars == null ? true : special.stars) {
+            const numStars = random() * 4;
+            for (let i = 0; i < numStars; i++) {
+                entities.push({
+                    star: {
+                        size: Math.ceil(random() * 2),
+                        color: colors[Math.floor(random() * 2 + 9)]
+                    },
+                    chunkId: chunk.id,
+                    position: Vec.add(chunkOrigin, Vec.scale({ x: random(), y: random() }, chunkSize))
+                });
+            }
         }
 
-        // Create planet if needed
-        if (random() < 0.3) {
-            const position = Vec.floor(Vec.scale({ x: chunk.x + random() * 0.4, y: chunk.y + random() * 0.4 }, chunkSize));
+        // Create planet
+        if (special?.planet == null ? random() < 0.3 : special.planet) {
+            const position = Vec.floor(
+                Vec.add(
+                    chunkOrigin,
+                    Vec.scale({ x: random() * 0.4, y: random() * 0.4 }, chunkSize)
+                )
+            );
             const startColors = [0, 1, 3, 6, 10, 11, 12];
             const startColor = startColors[Math.floor(random() * startColors.length)];
 
@@ -129,8 +150,7 @@ const update = () => {
                     firstColor: colors[startColor],
                     secondColor: colors[startColor + 1]
                 },
-                attached: [],
-                chunk,
+                chunkId: chunk.id,
                 spring: {
                     origin: position,
                     stiffness: 0.1
@@ -143,8 +163,34 @@ const update = () => {
             });
         }
 
-        // Create spaceship if needed
-        if (Math.random() < 0.01) {
+        // Create joey
+        if (special?.joey) {
+            // Make sure joey gets attached to planet
+            let position = chunkOrigin;
+            if (special?.planet) {
+                const planet = entities.find(e => e.planet && e.chunkId === chunk.id);
+                position = Vec.add(planet.position, { x: 0, y: -1 });
+            }
+
+            entities.push({
+                sprite: {
+                    imageId: "joey",
+                    scale: 0.5
+                },
+                chunkId: chunk.id,
+                position,
+                velocity: { x: 0, y: 0 },
+                rotation: 0,
+                rotationalVelocity: 0,
+                collision: {
+                    radius: 3,
+                    attach: true
+                }
+            });
+        }
+
+        // Create spaceship
+        if (special?.spaceship == null ? Math.random() < 0.01 : special.spaceship) {
             entities.push({
                 spaceship: {
                     speed: 10,
@@ -153,7 +199,7 @@ const update = () => {
                     imageId: "spaceship",
                     scale: 0.75
                 },
-                position: Vec.scale({ x: chunk.x, y: chunk.y }, chunkSize),
+                position: chunkOrigin,
                 velocity: { x: Math.random() * 10, y: 0 },
                 rotation: random() * 2 * Math.PI,
                 rotationalVelocity: 0,
@@ -191,7 +237,6 @@ const update = () => {
             );
 
             // Remove attachment
-            parent.attached = parent.attached.filter(a => a !== player);
             player.attachedTo = null;
 
             input.action = false;
@@ -201,7 +246,7 @@ const update = () => {
             player.velocity = Vec.add(player.velocity, Vec.scale(forward, player.boostSpeed * delta));
 
             // Spawn particles
-            for (let i = 0; i < deltaMs / 2; i++) {
+            for (let i = 0; i < deltaMs / 4; i++) {
                 entities.push({
                     particle: {
                         color: colors[15],
@@ -227,7 +272,7 @@ const update = () => {
     player.momentum = Math.max(0, Math.min(1, player.momentum));
 
     // Lifetime
-    for (let entity of entities.filter(e => e.lifetime)) {
+    for (let entity of entities.filter(e => e.age != null)) {
         entity.age += deltaMs;
     }
     entities = entities.filter(e => !e.lifetime || e.lifetime > e.age);
@@ -294,7 +339,6 @@ const update = () => {
 
                 // Attach
                 entity.attachedTo = planet;
-                planet.attached.push(entity);
             } else {
                 // Resolve collision
                 const normal = Vec.normalize(Vec.subtract(planet.position, entity.position));
@@ -324,14 +368,10 @@ const update = () => {
 
     // Velocity
     for (let entity of entities.filter(e => e.velocity)) {
-        const translation = Vec.scale(entity.velocity, delta);
-        entity.position = Vec.add(entity.position, translation);
-
-        // Move attached entities
-        if (entity.attached) {
-            for (let attached of entity.attached) {
-                attached.position = Vec.add(attached.position, translation);
-            }
+        if (entity.attachedTo) {
+            entity.position = Vec.add(entity.position, Vec.scale(entity.attachedTo.velocity, delta));
+        } else {
+            entity.position = Vec.add(entity.position, Vec.scale(entity.velocity, delta));
         }
     }
 
@@ -347,17 +387,17 @@ const update = () => {
     }
 
     // Rotation
-    for (let entity of entities.filter(e => e.rotationalVelocity)) {
-        const rotation = entity.rotationalVelocity * delta
-        entity.rotation += rotation;
-
-        // Rotate attached entities
-        if (entity.attached) {
-            for (let attached of entity.attached) {
-                const offset = Vec.rotate(Vec.subtract(attached.position, entity.position), rotation);
-                attached.position = Vec.add(entity.position, offset);
-                attached.rotation += rotation;
-            }
+    for (let entity of entities.filter(e => e.rotationalVelocity !== null)) {
+        if (entity.attachedTo) {
+            const rotation = entity.attachedTo.rotationalVelocity * delta;
+            const offset = Vec.rotate(
+                Vec.subtract(entity.position, entity.attachedTo.position),
+                rotation
+            );
+            entity.position = Vec.add(entity.attachedTo.position, offset);
+            entity.rotation += rotation;
+        } else {
+            entity.rotation += entity.rotationalVelocity * delta;
         }
     }
 
@@ -427,7 +467,7 @@ const draw = () => {
             }
         }
 
-        const random = chunkRandom(entity.chunk);
+        const random = seededRandom(entity.chunkId);
         for (let y = -r; y <= r; y++) {
             const w = width[y];
             ctx.fillStyle = entity.planet.firstColor;
