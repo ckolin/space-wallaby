@@ -83,9 +83,9 @@ let entities = [
     player
 ];
 
-let lastUpdate = Date.now();
+let lastUpdate = performance.now();
 const update = () => {
-    const now = Date.now();
+    const now = performance.now();
     const deltaMs = now - lastUpdate;
     const delta = deltaMs / 1000;
     lastUpdate = now;
