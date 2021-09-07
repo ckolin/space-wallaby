@@ -592,7 +592,7 @@ const draw = () => {
     for (let entity of entities.filter(e => e.sprite?.imageId === "joey")) {
         const between = Vec.subtract(entity.position, camera.position);
         const distance = Vec.length(between);
-        const scale = 10 / distance + 1;
+        const scale = 40 / distance + 1;
 
         ctx.save();
 
