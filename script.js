@@ -45,6 +45,8 @@ let specials = {
     }
 };
 
+let nextJoey = Vec.scale({x: 1.5, y: 0.5}, chunkSize);
+
 const camera = {
     size: 100,
     minSize: 100,
@@ -548,8 +550,25 @@ const draw = () => {
     ctx.restore();
 
     // Draw hud
-    ctx.fillStyle = colors[11];
-    ctx.fillRect(0, 0, canvas.width * player.momentum, 12);
+    ctx.fillStyle = colors[15];
+    const u = canvas.width / 48;
+
+    // Draw arrow in direction of next joey
+    ctx.save();
+    const between = Vec.subtract(nextJoey, camera.position);
+    ctx.globalAlpha = Math.max(0, Math.min(1, (Vec.length(between) - 60) / 10));
+    ctx.translate(canvas.width / 2, canvas.height / 2);
+    ctx.rotate(Vec.angle(between));
+    ctx.translate(10 * u, 0);
+    ctx.beginPath();
+    ctx.moveTo(0, -u);
+    ctx.lineTo(u, 0);
+    ctx.lineTo(0, u);
+    ctx.fill();
+    ctx.restore();
+
+    // Draw player momentum bar
+    ctx.fillRect(0, 0, canvas.width * player.momentum, u);
 
     requestAnimationFrame(draw);
 };
