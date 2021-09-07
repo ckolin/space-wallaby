@@ -37,7 +37,7 @@ class Vec {
     }
 
     static angle(vec) {
-        return Math.atan(vec.y / vec.x);
+        return Math.atan2(vec.y, vec.x);
     }
 
     static length(vec) {
