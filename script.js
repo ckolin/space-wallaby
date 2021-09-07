@@ -32,27 +32,29 @@ const seededRandom = s => () => (2 ** 31 - 1 & (s = Math.imul(48271, s + seed)))
 
 // Chunk system for procedural generation
 const chunkSize = 42;
+const getChunk = position => {
+    const chunk = Vec.floor(Vec.scale(position, 1 / chunkSize));
+    chunk.id = chunk.y * 1e9 + chunk.x;
+    return chunk;
+};
 let chunks = [];
 
 // Things that need to be generated in a certain chunk
 let specials = {
     0: {
         planet: false
-    },
-    1: {
-        joey: true,
-        planet: true
     }
 };
 
-let nextJoey = Vec.scale({x: 1.5, y: 0.5}, chunkSize);
-
 const camera = {
-    size: 100,
-    minSize: 100,
-    maxSize: 200,
-    playerDistanceSizeFactor: 4,
-    speed: 2,
+    camera: {
+        size: 100,
+        minSize: 100,
+        maxSize: 200,
+        playerDistanceSizeFactor: 4,
+        speed: 2,
+    },
+    keep: true,
     position: { x: 0, y: 0 },
     velocity: { x: 0, y: 0 }
 };
@@ -62,13 +64,16 @@ const player = {
         imageId: "wallaby",
         scale: 0.5
     },
-    momentum: 0,
-    jumpSpeed: 30,
-    bonusJumpSpeed: 40,
-    boostSpeed: 80,
-    attachedMomentumFactor: -0.2,
-    floatingMomentumFactor: 0.1,
-    boostingMomentumFactor: -0.8,
+    player: {
+        momentum: 0,
+        jumpSpeed: 30,
+        bonusJumpSpeed: 40,
+        boostSpeed: 80,
+        attachedMomentumFactor: -0.2,
+        floatingMomentumFactor: 0.1,
+        boostingMomentumFactor: -0.8,
+    },
+    keep: true,
     position: { x: 0, y: 0 },
     velocity: { x: 0, y: 0 },
     rotation: 0,
@@ -96,21 +101,45 @@ const update = () => {
         return;
     }
 
+    // Spawn joey if none exists
+    if (!entities.some(e => e.sprite?.imageId === "joey")) {
+        // TODO: Pick random position
+        const chunk = getChunk(Vec.add(player.position, { x: chunkSize, y: 0 }));
+        specials[chunk.id] = {
+            joey: true,
+            planet: true
+        };
+
+        entities.push({
+            sprite: {
+                imageId: "joey",
+                scale: 0.5
+            },
+            keep: true,
+            chunkId: chunk.id,
+            position: Vec.scale(chunk, chunkSize),
+            velocity: { x: 0, y: 0 },
+            rotation: 0,
+            rotationalVelocity: 0,
+            collision: {
+                radius: 3,
+                attach: true
+            }
+        });
+    }
+
     // Find active chunks
     const previousChunks = chunks;
     chunks = [];
-    const topLeft = Vec.add(camera.position, Vec.scale({ x: 1, y: 1 }, -camera.size / 2));
-    for (let x = Math.floor(topLeft.x / chunkSize) - 1; (x - 1) * chunkSize < Math.ceil(topLeft.x + camera.size); x++) {
-        for (let y = Math.floor(topLeft.y / chunkSize) - 1; (y - 1) * chunkSize < Math.ceil(topLeft.y + camera.size); y++) {
-            chunks.push({ id: y * 1e9 + x, x, y });
+    const screenHalf = Vec.scale({ x: 1, y: 1 }, camera.camera.size / 2);
+    const start = Vec.subtract(camera.position, screenHalf);
+    const end = Vec.add(camera.position, screenHalf);
+    const overscan = chunkSize * 2;
+    for (let x = start.x - overscan; x <= end.x + overscan; x += chunkSize) {
+        for (let y = start.y - overscan; y <= end.y + overscan; y += chunkSize) {
+            chunks.push(getChunk({ x, y }));
         }
     }
-
-    // Remove entities belonging to inactive chunks
-    entities = entities.filter(e => !e.chunkId || chunks.some(c => c.id === e.chunkId));
-
-    // Remove entities too far out of view
-    entities = entities.filter(e => Vec.distance(e.position, camera.position) < camera.size * 2);
 
     // Generate new chunks
     const newChunks = chunks.filter(c => !previousChunks.some(p => p.id === c.id));
@@ -152,11 +181,11 @@ const update = () => {
                     firstColor: colors[startColor],
                     secondColor: colors[startColor + 1]
                 },
-                chunkId: chunk.id,
                 spring: {
                     origin: position,
                     stiffness: 0.1
                 },
+                chunkId: chunk.id,
                 position,
                 velocity: { x: 0, y: 0 },
                 damping: 0.8,
@@ -165,30 +194,12 @@ const update = () => {
             });
         }
 
-        // Create joey
-        if (special?.joey) {
-            // Make sure joey gets attached to planet
-            let position = chunkOrigin;
-            if (special?.planet) {
-                const planet = entities.find(e => e.planet && e.chunkId === chunk.id);
-                position = Vec.add(planet.position, { x: 0, y: -1 });
-            }
-
-            entities.push({
-                sprite: {
-                    imageId: "joey",
-                    scale: 0.5
-                },
-                chunkId: chunk.id,
-                position,
-                velocity: { x: 0, y: 0 },
-                rotation: 0,
-                rotationalVelocity: 0,
-                collision: {
-                    radius: 3,
-                    attach: true
-                }
-            });
+        // Make sure joey gets attached to planet
+        if (special?.joey && special?.planet) {
+            const joey = entities.find(e => e.sprite?.imageId === "joey" && e.chunkId === chunk.id);
+            const planet = entities.find(e => e.planet && e.chunkId === chunk.id);
+            joey.rotation = 0;
+            joey.position = Vec.add(planet.position, { x: 0, y: -1 });
         }
 
         // Create spaceship
@@ -219,11 +230,11 @@ const update = () => {
             Vec.scale(player.velocity, 0.2),
             Vec.subtract(player.position, camera.position)
         ),
-        camera.speed
+        camera.camera.speed
     );
-    camera.size = Math.min(
-        camera.maxSize,
-        Vec.distance(player.position, camera.position) * camera.playerDistanceSizeFactor + camera.minSize
+    camera.camera.size = Math.min(
+        camera.camera.maxSize,
+        Vec.distance(player.position, camera.position) * camera.camera.playerDistanceSizeFactor + camera.camera.minSize
     );
 
     // Player jumping and boosting
@@ -234,7 +245,7 @@ const update = () => {
             const direction = Vec.normalize(Vec.scale(Vec.subtract(parent.position, player.position), -1));
             player.position = Vec.add(player.position, direction); // Move out of collision
             player.velocity = Vec.rotate(
-                Vec.scale(direction, player.jumpSpeed + player.bonusJumpSpeed * player.momentum),
+                Vec.scale(direction, player.player.jumpSpeed + player.player.bonusJumpSpeed * player.player.momentum),
                 parent.rotationalVelocity * delta
             );
 
@@ -242,10 +253,10 @@ const update = () => {
             player.attachedTo = null;
 
             input.action = false;
-        } else if (player.momentum > 0) {
-            player.momentum += player.boostingMomentumFactor * delta;
+        } else if (player.player.momentum > 0) {
+            player.player.momentum += player.player.boostingMomentumFactor * delta;
             const forward = Vec.normalize(player.velocity);
-            player.velocity = Vec.add(player.velocity, Vec.scale(forward, player.boostSpeed * delta));
+            player.velocity = Vec.add(player.velocity, Vec.scale(forward, player.player.boostSpeed * delta));
 
             // Spawn particles
             for (let i = 0; i < deltaMs / 4; i++) {
@@ -267,11 +278,11 @@ const update = () => {
 
     // Player momentum
     if (player.attachedTo) {
-        player.momentum += player.attachedMomentumFactor * delta;
+        player.player.momentum += player.player.attachedMomentumFactor * delta;
     } else {
-        player.momentum += player.floatingMomentumFactor * delta;
+        player.player.momentum += player.player.floatingMomentumFactor * delta;
     }
-    player.momentum = Math.max(0, Math.min(1, player.momentum));
+    player.player.momentum = Math.max(0, Math.min(1, player.player.momentum));
 
     // Lifetime
     for (let entity of entities.filter(e => e.age != null)) {
@@ -306,8 +317,8 @@ const update = () => {
             const between = Vec.subtract(planet.position, entity.position);
             const collisionDistance = planet.planet.radius + entity.collision.radius;
 
-            if (!entity.collision || Vec.length(between) > collisionDistance) {
-                continue; // Collision disabled or too far away
+            if (Vec.length(between) > collisionDistance) {
+                continue; // Too far away
             }
 
             if (entity.collision.attach) {
@@ -368,6 +379,15 @@ const update = () => {
         }
     }
 
+    // Joey collision
+    for (let entity of entities.filter(e => e.sprite?.imageId === "joey")) {
+        const distance = Vec.distance(entity.position, player.position);
+        if (distance < entity.collision.radius + player.collision.radius) {
+            entity.destroy = true;
+            delete specials[entity.chunkId].joey;
+        }
+    }
+
     // Velocity
     for (let entity of entities.filter(e => e.velocity)) {
         if (entity.attachedTo) {
@@ -410,6 +430,21 @@ const update = () => {
     for (let entity of entities.filter(e => e.rotationalDamping)) {
         entity.rotationalVelocity *= 1 - entity.rotationalDamping * delta;
     }
+
+    entities
+        .filter(e => !e.keep)
+        .filter(e =>
+            (e.chunkId && !chunks.some(c => c.id === e.chunkId)) // Remove entities belonging to inactive chunks
+            || Vec.distance(e.position, camera.position) > camera.size * 2) // Remove entities too far out of view
+        .forEach(e => e.destroy = true);
+
+    // Remove entities marked to be destroyed
+    entities = entities.filter(e => !e.destroy);
+
+    // Remove attachments that where one entity destroyed
+    for (let entity of entities.filter(e => e.attachedTo?.destroy)) {
+        entity.attachedTo = null;
+    }
 };
 
 const draw = () => {
@@ -421,9 +456,9 @@ const draw = () => {
 
     // Center around camera
     ctx.save();
-    const scale = canvas.width / camera.size;
+    const scale = canvas.width / camera.camera.size;
     ctx.scale(scale, scale);
-    const topLeft = Vec.add(camera.position, Vec.scale({ x: 1, y: 1 }, -camera.size / 2));
+    const topLeft = Vec.add(camera.position, Vec.scale({ x: 1, y: 1 }, -camera.camera.size / 2));
     ctx.translate(-topLeft.x, -topLeft.y);
 
     // Draw stars
@@ -551,24 +586,33 @@ const draw = () => {
 
     // Draw hud
     ctx.fillStyle = colors[15];
-    const u = canvas.width / 48;
+    const unit = canvas.width / 48;
 
-    // Draw arrow in direction of next joey
-    ctx.save();
-    const between = Vec.subtract(nextJoey, camera.position);
-    ctx.globalAlpha = Math.max(0, Math.min(1, (Vec.length(between) - 60) / 10));
-    ctx.translate(canvas.width / 2, canvas.height / 2);
-    ctx.rotate(Vec.angle(between));
-    ctx.translate(10 * u, 0);
-    ctx.beginPath();
-    ctx.moveTo(0, -u);
-    ctx.lineTo(u, 0);
-    ctx.lineTo(0, u);
-    ctx.fill();
-    ctx.restore();
+    // Draw arrow in direction of joeys
+    for (let entity of entities.filter(e => e.sprite?.imageId === "joey")) {
+        const between = Vec.subtract(entity.position, camera.position);
+        const distance = Vec.length(between);
+        const scale = 10 / distance + 1;
+
+        ctx.save();
+
+        ctx.globalAlpha = Math.max(0, Math.min(1, (distance - 60) / 10));
+        ctx.translate(canvas.width / 2, canvas.height / 2);
+        ctx.rotate(Vec.angle(between));
+        ctx.translate(10 * unit, 0);
+        ctx.scale(scale, scale);
+
+        ctx.beginPath();
+        ctx.moveTo(0, -unit);
+        ctx.lineTo(unit, 0);
+        ctx.lineTo(0, unit);
+        ctx.fill();
+
+        ctx.restore();
+    }
 
     // Draw player momentum bar
-    ctx.fillRect(0, 0, canvas.width * player.momentum, u);
+    ctx.fillRect(0, 0, canvas.width * player.player.momentum, unit);
 
     requestAnimationFrame(draw);
 };
