@@ -31,9 +31,21 @@ const seed = Date.now();
 const seededRandom = s => () => (2 ** 31 - 1 & (s = Math.imul(48271, s + seed))) / 2 ** 31;
 
 // Chunk system for procedural generation
-const chunkSize = 42;
+const world = {
+    chunkSize: 42,
+    minJoeyDistance: 100,
+    joeyDistanceRandom: 100,
+    maxStars: 4,
+    planetChance: 0.3,
+    minPlanetRadius: 2,
+    planetRadiusRandom: 8,
+    minPlanetRotationalVelocity: 1,
+    planetRotationalVelocityRandom: 3,
+    spaceshipChange: 0.01,
+};
+
 const getChunk = position => {
-    const chunk = Vec.floor(Vec.scale(position, 1 / chunkSize));
+    const chunk = Vec.floor(Vec.scale(position, 1 / world.chunkSize));
     chunk.id = chunk.y * 1e9 + chunk.x;
     return chunk;
 };
@@ -103,8 +115,14 @@ const update = () => {
 
     // Spawn joey if none exists
     if (!entities.some(e => e.sprite?.imageId === "joey")) {
-        // TODO: Pick random position
-        const chunk = getChunk(Vec.add(player.position, { x: chunkSize, y: 0 }));
+        const chunk = getChunk(Vec.add(
+            player.position,
+            Vec.rotate(
+                { x: Math.random() * world.joeyDistanceRandom + world.minJoeyDistance, y: 0 },
+                Math.random() * 2 * Math.PI
+            )
+        ));
+
         specials[chunk.id] = {
             joey: true,
             planet: true
@@ -117,7 +135,7 @@ const update = () => {
             },
             keep: true,
             chunkId: chunk.id,
-            position: Vec.scale(chunk, chunkSize),
+            position: Vec.scale(chunk, world.chunkSize),
             velocity: { x: 0, y: 0 },
             rotation: 0,
             rotationalVelocity: 0,
@@ -134,9 +152,9 @@ const update = () => {
     const screenHalf = Vec.scale({ x: 1, y: 1 }, camera.camera.size / 2);
     const start = Vec.subtract(camera.position, screenHalf);
     const end = Vec.add(camera.position, screenHalf);
-    const overscan = chunkSize * 2;
-    for (let x = start.x - overscan; x <= end.x + overscan; x += chunkSize) {
-        for (let y = start.y - overscan; y <= end.y + overscan; y += chunkSize) {
+    const overscan = world.chunkSize * 2;
+    for (let x = start.x - overscan; x <= end.x + overscan; x += world.chunkSize) {
+        for (let y = start.y - overscan; y <= end.y + overscan; y += world.chunkSize) {
             chunks.push(getChunk({ x, y }));
         }
     }
@@ -145,12 +163,12 @@ const update = () => {
     const newChunks = chunks.filter(c => !previousChunks.some(p => p.id === c.id));
     for (let chunk of newChunks) {
         const random = seededRandom(chunk.id);
-        const chunkOrigin = Vec.scale(chunk, chunkSize);
+        const chunkOrigin = Vec.scale(chunk, world.chunkSize);
         const special = specials[chunk.id];
 
         // Create stars
         if (special?.stars == null ? true : special.stars) {
-            const numStars = random() * 4;
+            const numStars = random() * world.maxStars;
             for (let i = 0; i < numStars; i++) {
                 entities.push({
                     star: {
@@ -158,17 +176,17 @@ const update = () => {
                         color: colors[Math.floor(random() * 2 + 9)]
                     },
                     chunkId: chunk.id,
-                    position: Vec.add(chunkOrigin, Vec.scale({ x: random(), y: random() }, chunkSize))
+                    position: Vec.add(chunkOrigin, Vec.scale({ x: random(), y: random() }, world.chunkSize))
                 });
             }
         }
 
         // Create planet
-        if (special?.planet == null ? random() < 0.3 : special.planet) {
+        if (special?.planet == null ? random() < world.planetChance : special.planet) {
             const position = Vec.floor(
                 Vec.add(
                     chunkOrigin,
-                    Vec.scale({ x: random() * 0.4, y: random() * 0.4 }, chunkSize)
+                    Vec.scale({ x: random() * 0.4, y: random() * 0.4 }, world.chunkSize)
                 )
             );
             const startColors = [0, 1, 3, 6, 10, 11, 12];
@@ -176,7 +194,7 @@ const update = () => {
 
             entities.push({
                 planet: {
-                    radius: Math.ceil((random() * 0.2 + 0.05) * chunkSize),
+                    radius: Math.ceil(random() * world.planetRadiusRandom + world.minPlanetRadius),
                     stripeSpacing: Math.ceil(random() * 3),
                     firstColor: colors[startColor],
                     secondColor: colors[startColor + 1]
@@ -190,7 +208,8 @@ const update = () => {
                 velocity: { x: 0, y: 0 },
                 damping: 0.8,
                 rotation: random() * 2 * Math.PI,
-                rotationalVelocity: (random() * 3 + 1) * (random() < 0.5 ? 1 : -1)
+                rotationalVelocity: (random() * world.planetRotationalVelocityRandom + world.minPlanetRotationalVelocity)
+                    * (random() < 0.5 ? 1 : -1)
             });
         }
 
@@ -203,7 +222,7 @@ const update = () => {
         }
 
         // Create spaceship
-        if (special?.spaceship == null ? Math.random() < 0.01 : special.spaceship) {
+        if (special?.spaceship == null ? Math.random() < world.spaceshipChance : special.spaceship) {
             entities.push({
                 spaceship: {
                     speed: 10,
@@ -214,7 +233,7 @@ const update = () => {
                 },
                 position: chunkOrigin,
                 velocity: { x: Math.random() * 10, y: 0 },
-                rotation: random() * 2 * Math.PI,
+                rotation: Math.random() * 2 * Math.PI,
                 rotationalVelocity: 0,
                 collision: {
                     radius: 8,
