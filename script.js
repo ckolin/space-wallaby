@@ -282,9 +282,13 @@ const update = () => {
                         size: Math.random() + 0.5
                     },
                     age: 0,
-                    lifetime: Math.random() * 500 + 200,
+                    lifetime: Math.random() * 500 + 400,
                     position: player.position,
-                    velocity: Vec.scale(Vec.rotate(forward, (Math.random() - 0.5) * 2), -(Math.random() * 10 + 10))
+                    velocity: Vec.scale(Vec.rotate(forward, (Math.random() - 0.5) * 2), -(Math.random() * 10 + 10)),
+                    collision: {
+                        radius: 1,
+                        attach: false
+                    }
                 });
             }
         } else {
@@ -388,7 +392,6 @@ const update = () => {
                 const perp = Vec.scale(Vec.subtract(rel, para), 1);
 
                 entity.velocity = Vec.scale(perp, -3 / 4);
-                planet.velocity = Vec.scale(perp, 1 / 4);
             }
 
             break;
