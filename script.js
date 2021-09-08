@@ -79,7 +79,6 @@ const player = {
     player: {
         momentum: 0,
         jumpSpeed: 30,
-        bonusJumpSpeed: 40,
         boostSpeed: 80,
         attachedMomentumFactor: -0.2,
         floatingMomentumFactor: 0.1,
@@ -264,14 +263,12 @@ const update = () => {
             const direction = Vec.normalize(Vec.scale(Vec.subtract(parent.position, player.position), -1));
             player.position = Vec.add(player.position, direction); // Move out of collision
             player.velocity = Vec.rotate(
-                Vec.scale(direction, player.player.jumpSpeed + player.player.bonusJumpSpeed * player.player.momentum),
+                Vec.scale(direction, player.player.jumpSpeed),
                 parent.rotationalVelocity * delta
             );
 
             // Remove attachment
             player.attachedTo = null;
-
-            input.action = false;
         } else if (player.player.momentum > 0) {
             player.player.momentum += player.player.boostingMomentumFactor * delta;
             const forward = Vec.normalize(player.velocity);
