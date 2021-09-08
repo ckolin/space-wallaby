@@ -69,6 +69,7 @@ const camera = {
     velocity: { x: 0, y: 0 }
 };
 
+let score = 0;
 const player = {
     sprite: {
         imageId: "wallaby",
@@ -76,8 +77,8 @@ const player = {
     },
     wallaby: {
         momentum: 0,
-        jumpSpeed: 30,
-        boostSpeed: 80,
+        jumpSpeed: 20,
+        boostSpeed: 60,
         attachedMomentumFactor: -0.2,
         floatingMomentumFactor: 0.1,
         boostingMomentumFactor: -0.8,
@@ -112,10 +113,12 @@ const update = () => {
 
     // Spawn joey if none exists
     if (!entities.some(e => e.sprite?.imageId === "joey")) {
+        const distance = score === 0 ? world.chunkSize * 2
+            : Math.random() * world.joeyDistanceRandom + world.minJoeyDistance;
         const chunk = getChunk(Vec.add(
             player.position,
             Vec.rotate(
-                { x: Math.random() * world.joeyDistanceRandom + world.minJoeyDistance, y: 0 },
+                { x: distance, y: 0 },
                 Math.random() * 2 * Math.PI
             )
         ));
@@ -400,6 +403,7 @@ const update = () => {
     for (let entity of entities.filter(e => e.sprite?.imageId === "joey")) {
         const distance = Vec.distance(entity.position, player.position);
         if (distance < entity.collision.radius + player.collision.radius) {
+            score++;
             entity.destroy = true;
             delete specials[entity.chunkId].joey;
         }
