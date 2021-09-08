@@ -15,10 +15,7 @@ const input = {
     pause: false
 };
 
-const canvas = document.getElementById("canvas");
-const ctx = canvas.getContext("2d");
-
-// Steam Lords by Slynyrd (https://lospec.com/palette-list/steam-lords)
+// Steam Lords palette by Slynyrd (https://lospec.com/palette-list/steam-lords)
 const colors = [
     "#213b25", "#3a604a", "#4f7754", "#a19f7c",
     "#77744f", "#775c4f", "#603b3a", "#3b2137",
@@ -30,10 +27,10 @@ const colors = [
 const seed = Date.now();
 const seededRandom = s => () => (2 ** 31 - 1 & (s = Math.imul(48271, s + seed))) / 2 ** 31;
 
-// Chunk system for procedural generation
+// World generation settings
 const world = {
     chunkSize: 42,
-    minJoeyDistance: 100,
+    minJoeyDistance: 200,
     joeyDistanceRandom: 100,
     maxStars: 4,
     planetChance: 0.3,
@@ -44,6 +41,7 @@ const world = {
     spaceshipChange: 0.01,
 };
 
+// Chunk system for procedural generation
 const getChunk = position => {
     const chunk = Vec.floor(Vec.scale(position, 1 / world.chunkSize));
     chunk.id = chunk.y * 1e9 + chunk.x;
@@ -52,14 +50,14 @@ const getChunk = position => {
 let chunks = [];
 
 // Things that need to be generated in a certain chunk
-let specials = {
+const specials = {
     0: {
         planet: false
     }
 };
 
 const camera = {
-    camera: {
+    view: {
         size: 100,
         minSize: 100,
         maxSize: 200,
@@ -76,7 +74,7 @@ const player = {
         imageId: "wallaby",
         scale: 0.5
     },
-    player: {
+    wallaby: {
         momentum: 0,
         jumpSpeed: 30,
         boostSpeed: 80,
@@ -148,7 +146,7 @@ const update = () => {
     // Find active chunks
     const previousChunks = chunks;
     chunks = [];
-    const screenHalf = Vec.scale({ x: 1, y: 1 }, camera.camera.size / 2);
+    const screenHalf = Vec.scale({ x: 1, y: 1 }, camera.view.size / 2);
     const start = Vec.subtract(camera.position, screenHalf);
     const end = Vec.add(camera.position, screenHalf);
     const overscan = world.chunkSize * 2;
@@ -248,11 +246,11 @@ const update = () => {
             Vec.scale(player.velocity, 0.2),
             Vec.subtract(player.position, camera.position)
         ),
-        camera.camera.speed
+        camera.view.speed
     );
-    camera.camera.size = Math.min(
-        camera.camera.maxSize,
-        Vec.distance(player.position, camera.position) * camera.camera.playerDistanceSizeFactor + camera.camera.minSize
+    camera.view.size = Math.min(
+        camera.view.maxSize,
+        Vec.distance(player.position, camera.position) * camera.view.playerDistanceSizeFactor + camera.view.minSize
     );
 
     // Player jumping and boosting
@@ -263,16 +261,16 @@ const update = () => {
             const direction = Vec.normalize(Vec.scale(Vec.subtract(parent.position, player.position), -1));
             player.position = Vec.add(player.position, direction); // Move out of collision
             player.velocity = Vec.rotate(
-                Vec.scale(direction, player.player.jumpSpeed),
+                Vec.scale(direction, player.wallaby.jumpSpeed),
                 parent.rotationalVelocity * delta
             );
 
             // Remove attachment
             player.attachedTo = null;
-        } else if (player.player.momentum > 0) {
-            player.player.momentum += player.player.boostingMomentumFactor * delta;
+        } else if (player.wallaby.momentum > 0) {
+            player.wallaby.momentum += player.wallaby.boostingMomentumFactor * delta;
             const forward = Vec.normalize(player.velocity);
-            player.velocity = Vec.add(player.velocity, Vec.scale(forward, player.player.boostSpeed * delta));
+            player.velocity = Vec.add(player.velocity, Vec.scale(forward, player.wallaby.boostSpeed * delta));
 
             // Spawn particles
             for (let i = 0; i < deltaMs / 4; i++) {
@@ -298,11 +296,11 @@ const update = () => {
 
     // Player momentum
     if (player.attachedTo) {
-        player.player.momentum += player.player.attachedMomentumFactor * delta;
+        player.wallaby.momentum += player.wallaby.attachedMomentumFactor * delta;
     } else {
-        player.player.momentum += player.player.floatingMomentumFactor * delta;
+        player.wallaby.momentum += player.wallaby.floatingMomentumFactor * delta;
     }
-    player.player.momentum = Math.max(0, Math.min(1, player.player.momentum));
+    player.wallaby.momentum = Math.max(0, Math.min(1, player.wallaby.momentum));
 
     // Lifetime
     for (let entity of entities.filter(e => e.age != null)) {
@@ -475,9 +473,9 @@ const draw = () => {
 
     // Center around camera
     ctx.save();
-    const scale = canvas.width / camera.camera.size;
+    const scale = canvas.width / camera.view.size;
     ctx.scale(scale, scale);
-    const topLeft = Vec.add(camera.position, Vec.scale({ x: 1, y: 1 }, -camera.camera.size / 2));
+    const topLeft = Vec.add(camera.position, Vec.scale({ x: 1, y: 1 }, -camera.view.size / 2));
     ctx.translate(-topLeft.x, -topLeft.y);
 
     // Draw stars
@@ -631,10 +629,13 @@ const draw = () => {
     }
 
     // Draw player momentum bar
-    ctx.fillRect(0, 0, canvas.width * player.player.momentum, unit);
+    ctx.fillRect(0, 0, canvas.width * player.wallaby.momentum, unit);
 
     requestAnimationFrame(draw);
 };
+
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
 
 // Input
 window.addEventListener("blur", () => input.pause = true);
