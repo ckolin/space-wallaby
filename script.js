@@ -226,6 +226,9 @@ const update = () => {
             entities.push({
                 spaceship: {
                     speed: 10,
+                    rotationSpeed: 1,
+                    state: "idle",
+                    since: 0
                 },
                 sprite: {
                     imageId: "spaceship",
@@ -233,8 +236,10 @@ const update = () => {
                 },
                 position: chunkOrigin,
                 velocity: { x: Math.random() * 10, y: 0 },
+                damping: 0.2,
                 rotation: Math.random() * 2 * Math.PI,
                 rotationalVelocity: 0,
+                rotationalDamping: 0.8,
                 collision: {
                     radius: 8,
                     attach: false
@@ -259,13 +264,11 @@ const update = () => {
     // Player jumping and boosting
     if (input.action) {
         if (player.attachedTo) {
-            const parent = player.attachedTo;
-
-            const direction = Vec.normalize(Vec.scale(Vec.subtract(parent.position, player.position), -1));
+            const direction = Vec.normalize(Vec.scale(Vec.subtract(player.attachedTo.position, player.position), -1));
             player.position = Vec.add(player.position, direction); // Move out of collision
             player.velocity = Vec.rotate(
                 Vec.scale(direction, player.wallaby.jumpSpeed),
-                parent.rotationalVelocity * delta
+                player.attachedTo.rotationalVelocity * delta
             );
 
             // Remove attachment
@@ -304,6 +307,51 @@ const update = () => {
         player.wallaby.momentum += player.wallaby.floatingMomentumFactor * delta;
     }
     player.wallaby.momentum = Math.max(0, Math.min(1, player.wallaby.momentum));
+
+    // Spaceship logic
+    for (let entity of entities.filter(e => e.spaceship)) {
+        entity.spaceship.since += deltaMs;
+        let newState;
+
+        switch (entity.spaceship.state) {
+            case "idle":
+                if (entity.spaceship.since > 1000) {
+                    newState = "rotate";
+                }
+                break;
+            case "rotate":
+                let angle = Vec.angle(Vec.subtract(player.position, entity.position)) - entity.rotation;
+                if (angle > Math.PI) {
+                    angle -= 2 * Math.PI;
+                } else if (angle <= -Math.PI) {
+                    angle + 2 * Math.PI;
+                }
+                entity.rotationalVelocity += angle * entity.spaceship.rotationSpeed * delta;
+
+                if (entity.spaceship.since > 1000) {
+                    newState = Math.random() < 0.5 ? "boost" : "shoot";
+                }
+                break;
+            case "boost":
+                entity.velocity = Vec.add(
+                    entity.velocity,
+                    Vec.scale(Vec.rotate({ x: 1, y: 0 }, entity.rotation), entity.spaceship.speed * delta)
+                );
+
+                if (entity.spaceship.since > 5000) {
+                    newState = "idle";
+                }
+                break;
+            case "shoot":
+                newState = "idle";
+                break;
+        }
+
+        if (newState) {
+            entity.spaceship.since = 0;
+            entity.spaceship.state = newState;
+        }
+    }
 
     // Gravity
     const planets = entities.filter(e => e.planet);
@@ -436,6 +484,7 @@ const update = () => {
         } else {
             entity.rotation += entity.rotationalVelocity * delta;
         }
+        entity.rotation %= 2 * Math.PI;
     }
 
     // Damping
@@ -594,7 +643,7 @@ const draw = () => {
 
         // Planet radius
         for (let entity of entities.filter(e => e.planet)) {
-            ctx.strokeStyle = "#f00";
+            ctx.strokeStyle = "#00f";
             ctx.beginPath();
             ctx.arc(entity.position.x, entity.position.y, entity.planet.radius, 0, 2 * Math.PI);
             ctx.stroke();
