@@ -305,12 +305,6 @@ const update = () => {
     }
     player.wallaby.momentum = Math.max(0, Math.min(1, player.wallaby.momentum));
 
-    // Lifetime
-    for (let entity of entities.filter(e => e.age != null)) {
-        entity.age += deltaMs;
-    }
-    entities = entities.filter(e => !e.lifetime || e.lifetime > e.age);
-
     // Gravity
     const planets = entities.filter(e => e.planet);
     for (let entity of entities.filter(e => e.gravity && !e.attachedTo)) {
@@ -452,11 +446,17 @@ const update = () => {
         entity.rotationalVelocity *= 1 - entity.rotationalDamping * delta;
     }
 
+    // Increase age
+    for (let entity of entities.filter(e => e.age != null)) {
+        entity.age += deltaMs;
+    }
+
     entities
         .filter(e => !e.keep)
         .filter(e =>
             (e.chunkId && !chunks.some(c => c.id === e.chunkId)) // Remove entities belonging to inactive chunks
-            || Vec.distance(e.position, camera.position) > camera.size * 2) // Remove entities too far out of view
+            || Vec.distance(e.position, camera.position) > camera.size * 2 // Remove entities too far out of view
+            || (e.lifetime && e.age > e.lifetime)) // Remove entities with no lifetime left
         .forEach(e => e.destroy = true);
 
     // Remove entities marked to be destroyed
