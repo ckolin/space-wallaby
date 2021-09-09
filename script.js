@@ -33,9 +33,9 @@ const world = {
     minJoeyDistance: 200,
     joeyDistanceRandom: 100,
     maxStars: 4,
-    planetChance: 0.3,
+    planetChance: 0.4,
     minPlanetRadius: 2,
-    planetRadiusRandom: 8,
+    planetRadiusRandom: 6,
     minPlanetRotationalVelocity: 1,
     planetRotationalVelocityRandom: 3,
     spaceshipChance: 0.01,
@@ -52,7 +52,8 @@ let chunks = [];
 // Things that need to be generated in a certain chunk
 const specials = {
     0: {
-        planet: false
+        planet: false,
+        spaceship: false
     }
 };
 
@@ -78,7 +79,7 @@ const player = {
     wallaby: {
         momentum: 0,
         jumpSpeed: 20,
-        boostSpeed: 60,
+        boostSpeed: 80,
         attachedMomentumFactor: -0.2,
         floatingMomentumFactor: 0.1,
         boostingMomentumFactor: -0.8,
@@ -225,9 +226,9 @@ const update = () => {
         if (special?.spaceship == null ? Math.random() < world.spaceshipChance : special.spaceship) {
             entities.push({
                 spaceship: {
-                    speed: 10,
+                    speed: 8,
                     rotationSpeed: 1,
-                    state: "idle",
+                    state: "boost",
                     since: 0
                 },
                 sprite: {
@@ -235,13 +236,13 @@ const update = () => {
                     scale: 0.75
                 },
                 position: chunkOrigin,
-                velocity: { x: Math.random() * 10, y: 0 },
-                damping: 0.2,
+                velocity: { x: 0, y: 0 },
+                damping: 0.3,
                 rotation: Math.random() * 2 * Math.PI,
                 rotationalVelocity: 0,
-                rotationalDamping: 0.8,
+                rotationalDamping: 0.6,
                 collision: {
-                    radius: 8,
+                    radius: 6,
                     attach: false
                 }
             });
@@ -282,7 +283,7 @@ const update = () => {
             for (let i = 0; i < deltaMs / 4; i++) {
                 entities.push({
                     particle: {
-                        color: colors[15],
+                        color: colors[14],
                         size: Math.random() + 0.5
                     },
                     age: 0,
@@ -311,12 +312,13 @@ const update = () => {
     // Spaceship logic
     for (let entity of entities.filter(e => e.spaceship)) {
         entity.spaceship.since += deltaMs;
+        const forward = Vec.rotate({ x: 1, y: 0 }, entity.rotation);
         let newState;
 
         switch (entity.spaceship.state) {
             case "idle":
-                if (entity.spaceship.since > 1000) {
-                    newState = "rotate";
+                if (entity.spaceship.since > 4000) {
+                    newState = Math.random() < 0.5 ? "boost" : "rotate";
                 }
                 break;
             case "rotate":
@@ -335,14 +337,46 @@ const update = () => {
             case "boost":
                 entity.velocity = Vec.add(
                     entity.velocity,
-                    Vec.scale(Vec.rotate({ x: 1, y: 0 }, entity.rotation), entity.spaceship.speed * delta)
+                    Vec.scale(forward, entity.spaceship.speed * delta)
                 );
 
-                if (entity.spaceship.since > 5000) {
+                // Spawn particles
+                const offset = { x: -3, y: 7 };
+                const right = Vec.rotate(offset, entity.rotation);
+                const left = Vec.rotate(Vec.multiply(offset, { x: 1, y: -1 }), entity.rotation);
+                for (let i = 0; i < deltaMs / 4; i++) {
+                    entities.push({
+                        particle: {
+                            color: colors[14],
+                            size: Math.random() + 0.5
+                        },
+                        age: 0,
+                        lifetime: Math.random() * 400 + 300,
+                        position: Vec.add(entity.position, i % 2 === 0 ? right : left),
+                        velocity: Vec.scale(Vec.rotate(forward, Math.random() - 0.5), -(Math.random() * 10 + 20)),
+                        collision: {
+                            radius: 1,
+                            attach: false
+                        }
+                    });
+                }
+
+                if (entity.spaceship.since > 2000) {
                     newState = "idle";
                 }
                 break;
             case "shoot":
+                entities.push({
+                    particle: {
+                        color: colors[15],
+                        size: 3
+                    },
+                    age: 0,
+                    lifetime: 5000,
+                    position: Vec.add(entity.position, Vec.scale(forward, 6)),
+                    velocity: Vec.scale(forward, 10),
+                });
+
                 newState = "idle";
                 break;
         }
@@ -594,7 +628,8 @@ const draw = () => {
         ctx.save();
         ctx.globalAlpha = 1 - entity.age / entity.lifetime;
         ctx.fillStyle = entity.particle.color;
-        ctx.fillRect(entity.position.x, entity.position.y, entity.particle.size, entity.particle.size);
+        const s = entity.particle.size;
+        ctx.fillRect(entity.position.x - s / 2, entity.position.y - s / 2, s, s);
         ctx.restore();
     }
 
