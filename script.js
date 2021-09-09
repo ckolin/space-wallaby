@@ -538,7 +538,7 @@ const update = () => {
         .filter(e => !e.keep)
         .filter(e =>
             (e.chunkId && !chunks.some(c => c.id === e.chunkId)) // Remove entities belonging to inactive chunks
-            || Vec.distance(e.position, camera.position) > camera.size * 2 // Remove entities too far out of view
+            || Vec.distance(e.position, camera.position) > camera.view.size * 2 // Remove entities too far out of view
             || (e.lifetime && e.age > e.lifetime)) // Remove entities with no lifetime left
         .forEach(e => e.destroy = true);
 
