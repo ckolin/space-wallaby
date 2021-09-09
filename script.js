@@ -38,7 +38,7 @@ const world = {
     planetRadiusRandom: 8,
     minPlanetRotationalVelocity: 1,
     planetRotationalVelocityRandom: 3,
-    spaceshipChange: 0.01,
+    spaceshipChance: 0.01,
 };
 
 // Chunk system for procedural generation
