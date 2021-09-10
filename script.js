@@ -27,23 +27,27 @@ const colors = [
 const seed = Date.now();
 const seededRandom = s => () => (2 ** 31 - 1 & (s = Math.imul(48271, s + seed))) / 2 ** 31;
 
-// World generation settings
+// World settings that affect gameplay
 const world = {
-    chunkSize: 42,
-    minJoeyDistance: 200,
-    joeyDistanceRandom: 100,
-    maxStars: 4,
+    baseJoeyDistance: 200,
+    randomJoeyDistance: 100,
     planetChance: 0.4,
-    minPlanetRadius: 3,
-    planetRadiusRandom: 6,
-    minPlanetRotationalVelocity: 1,
-    planetRotationalVelocityRandom: 3,
+    basePlanetRadius: 3,
+    randomPlanetRadius: 6,
+    basePlanetRotationalVelocity: 1,
+    randomPlanetRotationalVelocity: 3,
     spaceshipChance: 0.01,
+    baseSpaceshipSpeed: 6,
+    randomSpaceshipSpeed: 4,
+    baseSpaceshipRotationSpeed: 0.1,
+    randomSpaceshipRotationSpeed: 1,
+    spaceshipIdleTime: 5000
 };
 
 // Chunk system for procedural generation
+chunkSize = 42;
 const getChunk = position => {
-    const chunk = Vec.floor(Vec.scale(position, 1 / world.chunkSize));
+    const chunk = Vec.floor(Vec.scale(position, 1 / chunkSize));
     chunk.id = chunk.y * 1e9 + chunk.x;
     return chunk;
 };
@@ -80,18 +84,20 @@ const player = {
         momentum: 0,
         jumpSpeed: 20,
         boostSpeed: 80,
+        rotationSpeed: 100,
         attachedMomentumFactor: -0.2,
         floatingMomentumFactor: 0.1,
-        boostingMomentumFactor: -0.8,
+        boostingMomentumFactor: -0.8
     },
     keep: true,
     position: { x: 0, y: 0 },
     velocity: { x: 0, y: 0 },
     rotation: 0,
     rotationalVelocity: 0,
+    rotationalDamping: 1,
     gravity: 0.8,
     collision: {
-        radius: 4,
+        radius: 5,
         attach: true
     }
 };
@@ -100,6 +106,17 @@ let entities = [
     camera,
     player
 ];
+
+const angleDifference = (a, b) => {
+    const res = a - b;
+    if (res > Math.PI) {
+        return res - 2 * Math.PI;
+    } else if (res <= -Math.PI) {
+        return res + 2 * Math.PI;
+    } else {
+        return res;
+    }
+};
 
 let lastUpdate = performance.now();
 const update = () => {
@@ -114,8 +131,8 @@ const update = () => {
 
     // Spawn joey if none exists
     if (!entities.some(e => e.sprite?.imageId === "joey")) {
-        const distance = score === 0 ? world.chunkSize * 2
-            : Math.random() * world.joeyDistanceRandom + world.minJoeyDistance;
+        const distance = score === 0 ? chunkSize * 2
+            : Math.random() * world.randomJoeyDistance + world.baseJoeyDistance;
         const chunk = getChunk(Vec.add(
             player.position,
             Vec.rotate(
@@ -136,7 +153,7 @@ const update = () => {
             },
             keep: true,
             chunkId: chunk.id,
-            position: Vec.scale(chunk, world.chunkSize),
+            position: Vec.scale(chunk, chunkSize),
             velocity: { x: 0, y: 0 },
             rotation: 0,
             rotationalVelocity: 0,
@@ -153,9 +170,9 @@ const update = () => {
     const screenHalf = Vec.scale({ x: 1, y: 1 }, camera.view.size / 2);
     const start = Vec.subtract(camera.position, screenHalf);
     const end = Vec.add(camera.position, screenHalf);
-    const overscan = world.chunkSize * 2;
-    for (let x = start.x - overscan; x <= end.x + overscan; x += world.chunkSize) {
-        for (let y = start.y - overscan; y <= end.y + overscan; y += world.chunkSize) {
+    const overscan = chunkSize * 2;
+    for (let x = start.x - overscan; x <= end.x + overscan; x += chunkSize) {
+        for (let y = start.y - overscan; y <= end.y + overscan; y += chunkSize) {
             chunks.push(getChunk({ x, y }));
         }
     }
@@ -164,12 +181,12 @@ const update = () => {
     const newChunks = chunks.filter(c => !previousChunks.some(p => p.id === c.id));
     for (let chunk of newChunks) {
         const random = seededRandom(chunk.id);
-        const chunkOrigin = Vec.scale(chunk, world.chunkSize);
+        const chunkOrigin = Vec.scale(chunk, chunkSize);
         const special = specials[chunk.id];
 
         // Create stars
         if (special?.stars == null ? true : special.stars) {
-            const numStars = random() * world.maxStars;
+            const numStars = random() * 4;
             for (let i = 0; i < numStars; i++) {
                 entities.push({
                     star: {
@@ -177,7 +194,7 @@ const update = () => {
                         color: colors[Math.floor(random() * 2 + 1)]
                     },
                     chunkId: chunk.id,
-                    position: Vec.add(chunkOrigin, Vec.scale({ x: random(), y: random() }, world.chunkSize))
+                    position: Vec.add(chunkOrigin, Vec.scale({ x: random(), y: random() }, chunkSize))
                 });
             }
         }
@@ -187,7 +204,7 @@ const update = () => {
             const position = Vec.floor(
                 Vec.add(
                     chunkOrigin,
-                    Vec.scale({ x: random() * 0.4, y: random() * 0.4 }, world.chunkSize)
+                    Vec.scale({ x: random() * 0.4, y: random() * 0.4 }, chunkSize)
                 )
             );
             const startColors = [1, 2, 5, 6, 8, 9, 10, 13, 14];
@@ -196,7 +213,7 @@ const update = () => {
 
             entities.push({
                 planet: {
-                    radius: Math.ceil(random() * world.planetRadiusRandom + world.minPlanetRadius),
+                    radius: Math.ceil(random() * world.randomPlanetRadius + world.basePlanetRadius),
                     stripeSpacing: Math.ceil(random() * 3),
                     firstColor: colors[swap ? startColor + 1 : startColor],
                     secondColor: colors[swap ? startColor : startColor + 1]
@@ -210,7 +227,7 @@ const update = () => {
                 velocity: { x: 0, y: 0 },
                 damping: 0.8,
                 rotation: random() * 2 * Math.PI,
-                rotationalVelocity: (random() * world.planetRotationalVelocityRandom + world.minPlanetRotationalVelocity)
+                rotationalVelocity: (random() * world.randomPlanetRotationalVelocity + world.basePlanetRotationalVelocity)
                     * (random() < 0.5 ? 1 : -1)
             });
         }
@@ -227,8 +244,8 @@ const update = () => {
         if (special?.spaceship == null ? Math.random() < world.spaceshipChance : special.spaceship) {
             entities.push({
                 spaceship: {
-                    speed: random() * 4 + 6,
-                    rotationSpeed: random() + 0.2,
+                    speed: Math.random() * world.randomSpaceshipSpeed + world.baseSpaceshipSpeed,
+                    rotationSpeed: Math.random() * world.randomSpaceshipRotationSpeed + world.baseSpaceshipRotationSpeed,
                     state: "boost",
                     since: 0
                 },
@@ -263,6 +280,22 @@ const update = () => {
         Vec.distance(player.position, camera.position) * camera.view.playerDistanceSizeFactor + camera.view.minSize
     );
 
+    // Player rotation
+    if (!player.attachedTo) {
+        let shortest = { x: Infinity, y: Infinity };
+
+        for (let planet of entities.filter(e => e.planet)) {
+            const between = Vec.subtract(planet.position, player.position)
+            if (Vec.length2(between) < Vec.length2(shortest)) {
+                shortest = between;
+            }
+        }
+
+        const target = Vec.angle(shortest,) - 0.5 * Math.PI;
+        const angle = angleDifference(target, player.rotation);
+        player.rotationalVelocity += angle / Vec.length(shortest) * player.wallaby.rotationSpeed * delta;
+    }
+
     // Player jumping and boosting
     if (input.action) {
         if (player.attachedTo) {
@@ -277,8 +310,8 @@ const update = () => {
             player.attachedTo = null;
         } else if (player.wallaby.momentum > 0) {
             player.wallaby.momentum += player.wallaby.boostingMomentumFactor * delta;
-            const forward = Vec.normalize(player.velocity);
-            player.velocity = Vec.add(player.velocity, Vec.scale(forward, player.wallaby.boostSpeed * delta));
+            const downward = Vec.rotate({ x: 0, y: -1 }, player.rotation);
+            player.velocity = Vec.add(player.velocity, Vec.scale(downward, player.wallaby.boostSpeed * delta));
 
             // Spawn particles
             for (let i = 0; i < deltaMs / 4; i++) {
@@ -290,7 +323,7 @@ const update = () => {
                     age: 0,
                     lifetime: Math.random() * 500 + 400,
                     position: player.position,
-                    velocity: Vec.scale(Vec.rotate(forward, (Math.random() - 0.5) * 2), -(Math.random() * 10 + 10)),
+                    velocity: Vec.scale(Vec.rotate(downward, (Math.random() - 0.5) * 2), -(Math.random() * 10 + 10)),
                     collision: {
                         radius: 1,
                         attach: false
@@ -318,17 +351,15 @@ const update = () => {
 
         switch (entity.spaceship.state) {
             case "idle":
-                if (entity.spaceship.since > 4000) {
+                if (entity.spaceship.since > world.spaceshipIdleTime) {
                     newState = Math.random() < 0.5 ? "boost" : "rotate";
                 }
                 break;
             case "rotate":
-                let angle = Vec.angle(Vec.subtract(player.position, entity.position)) - entity.rotation;
-                if (angle > Math.PI) {
-                    angle -= 2 * Math.PI;
-                } else if (angle <= -Math.PI) {
-                    angle + 2 * Math.PI;
-                }
+                let angle = angleDifference(
+                    Vec.angle(Vec.subtract(player.position, entity.position)),
+                    entity.rotation
+                );
                 entity.rotationalVelocity += angle * entity.spaceship.rotationSpeed * delta;
 
                 if (entity.spaceship.since > 1000) {
@@ -392,11 +423,10 @@ const update = () => {
     }
 
     // Gravity
-    const planets = entities.filter(e => e.planet);
     for (let entity of entities.filter(e => e.gravity && !e.attachedTo)) {
         let force = { x: 0, y: 0 };
 
-        for (let planet of planets) {
+        for (let planet of entities.filter(e => e.planet)) {
             const between = Vec.subtract(planet.position, entity.position);
             const distance = Vec.length(between);
 
@@ -414,7 +444,7 @@ const update = () => {
 
     // Planet collision
     for (let entity of entities.filter(e => e.collision && !e.attachedTo)) {
-        for (let planet of planets) {
+        for (let planet of entities.filter(e => e.planet)) {
             const between = Vec.subtract(planet.position, entity.position);
             const collisionDistance = planet.planet.radius + entity.collision.radius;
 
@@ -423,9 +453,12 @@ const update = () => {
             }
 
             if (entity.collision.attach) {
-                // Stop player from jumping again
                 if (entity === player) {
+                    // Stop player from jumping again
                     input.action = false;
+
+                    // Set rotation
+                    entity.rotation = Vec.angle(between) - 0.5 * Math.PI;
                 }
 
                 // Make planet wobble
@@ -486,6 +519,14 @@ const update = () => {
         const distance = Vec.distance(entity.position, player.position);
         if (distance < entity.collision.radius + player.collision.radius) {
             score++;
+
+            // Increase difficulty
+            world.spaceshipChance += 0.01;
+            world.baseJoeyDistance += 20;
+            world.basePlanetRotationalVelocity += 0.5;
+            world.spaceshipIdleTime *= 0.8;
+
+            // Remove joey
             entity.destroy = true;
             delete specials[entity.chunkId].joey;
         }
