@@ -367,14 +367,18 @@ const update = () => {
                 break;
             case "shoot":
                 entities.push({
-                    particle: {
-                        color: colors[15],
-                        size: 3
+                    sprite: {
+                        imageId: "laser",
+                        scale: 0.75
                     },
-                    age: 0,
-                    lifetime: 5000,
                     position: Vec.add(entity.position, Vec.scale(forward, 6)),
                     velocity: Vec.scale(forward, 10),
+                    rotation: entity.rotation,
+                    rotationalVelocity: 0,
+                    collision: {
+                        radius: 1,
+                        destroy: true
+                    }
                 });
 
                 newState = "idle";
@@ -449,8 +453,10 @@ const update = () => {
 
                 // Attach
                 entity.attachedTo = planet;
+            } else if (entity.collision.destroy) {
+                entity.destroy = true;
             } else {
-                // Resolve collision
+                // Resolve normal collision
                 const normal = Vec.normalize(Vec.subtract(planet.position, entity.position));
                 const rel = Vec.subtract(entity.velocity, planet.velocity);
 
