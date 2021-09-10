@@ -34,7 +34,7 @@ const world = {
     joeyDistanceRandom: 100,
     maxStars: 4,
     planetChance: 0.4,
-    minPlanetRadius: 2,
+    minPlanetRadius: 3,
     planetRadiusRandom: 6,
     minPlanetRotationalVelocity: 1,
     planetRotationalVelocityRandom: 3,
@@ -173,7 +173,7 @@ const update = () => {
             for (let i = 0; i < numStars; i++) {
                 entities.push({
                     star: {
-                        size: Math.ceil(random() * 2),
+                        size: random() + 0.5,
                         color: colors[Math.floor(random() * 2 + 1)]
                     },
                     chunkId: chunk.id,
@@ -192,13 +192,14 @@ const update = () => {
             );
             const startColors = [1, 2, 5, 6, 8, 9, 10, 13, 14];
             const startColor = startColors[Math.floor(random() * startColors.length)];
+            const swap = random() < 0.5;
 
             entities.push({
                 planet: {
                     radius: Math.ceil(random() * world.planetRadiusRandom + world.minPlanetRadius),
                     stripeSpacing: Math.ceil(random() * 3),
-                    firstColor: colors[startColor],
-                    secondColor: colors[startColor + 1]
+                    firstColor: colors[swap ? startColor + 1 : startColor],
+                    secondColor: colors[swap ? startColor : startColor + 1]
                 },
                 spring: {
                     origin: position,
@@ -226,8 +227,8 @@ const update = () => {
         if (special?.spaceship == null ? Math.random() < world.spaceshipChance : special.spaceship) {
             entities.push({
                 spaceship: {
-                    speed: 8,
-                    rotationSpeed: 1,
+                    speed: random() * 4 + 6,
+                    rotationSpeed: random() + 0.2,
                     state: "boost",
                     since: 0
                 },
@@ -351,12 +352,11 @@ const update = () => {
                             size: Math.random() + 0.5
                         },
                         age: 0,
-                        lifetime: Math.random() * 400 + 300,
+                        lifetime: Math.random() * 200 + 200,
                         position: Vec.add(entity.position, i % 2 === 0 ? right : left),
                         velocity: Vec.scale(Vec.rotate(forward, Math.random() - 0.5), -(Math.random() * 10 + 20)),
                         collision: {
-                            radius: 1,
-                            attach: false
+                            radius: 1
                         }
                     });
                 }
@@ -622,7 +622,7 @@ const draw = () => {
 
             if (y % entity.planet.stripeSpacing == 0) {
                 ctx.fillStyle = entity.planet.secondColor;
-                ctx.fillRect(-w, y, random() * 2 * w, 1);
+                ctx.fillRect(-w, y, Math.ceil(random() * 2 * w), 1);
             }
         }
 
