@@ -15,12 +15,12 @@ const input = {
     pause: false
 };
 
-// Steam Lords palette by Slynyrd (https://lospec.com/palette-list/steam-lords)
+// URBEX 16 palette by Rustocrat (https://lospec.com/palette-list/urbex-16)
 const colors = [
-    "#213b25", "#3a604a", "#4f7754", "#a19f7c",
-    "#77744f", "#775c4f", "#603b3a", "#3b2137",
-    "#170e19", "#2f213b", "#433a60", "#4f5277",
-    "#65738c", "#7c94a1", "#a0b9ba", "#c0d1cc"
+    "#cbd1be", "#8f9389", "#52534c", "#26201d",
+    "#e0a46e", "#91a47a", "#5d7643", "#4d533a",
+    "#a93130", "#7a1338", "#834664", "#917692",
+    "#160712", "#593084", "#3870be", "#579fb4"
 ];
 
 // Seeded random number generator
@@ -174,7 +174,7 @@ const update = () => {
                 entities.push({
                     star: {
                         size: Math.ceil(random() * 2),
-                        color: colors[Math.floor(random() * 2 + 9)]
+                        color: colors[Math.floor(random() * 2 + 1)]
                     },
                     chunkId: chunk.id,
                     position: Vec.add(chunkOrigin, Vec.scale({ x: random(), y: random() }, world.chunkSize))
@@ -190,7 +190,7 @@ const update = () => {
                     Vec.scale({ x: random() * 0.4, y: random() * 0.4 }, world.chunkSize)
                 )
             );
-            const startColors = [0, 1, 3, 6, 10, 11, 12];
+            const startColors = [1, 2, 5, 6, 8, 9, 10, 13, 14];
             const startColor = startColors[Math.floor(random() * startColors.length)];
 
             entities.push({
@@ -283,7 +283,7 @@ const update = () => {
             for (let i = 0; i < deltaMs / 4; i++) {
                 entities.push({
                     particle: {
-                        color: colors[14],
+                        color: colors[0],
                         size: Math.random() + 0.5
                     },
                     age: 0,
@@ -347,7 +347,7 @@ const update = () => {
                 for (let i = 0; i < deltaMs / 4; i++) {
                     entities.push({
                         particle: {
-                            color: colors[14],
+                            color: colors[0],
                             size: Math.random() + 0.5
                         },
                         age: 0,
@@ -555,7 +555,7 @@ const draw = () => {
     update();
 
     // Draw backgruond
-    ctx.fillStyle = colors[8];
+    ctx.fillStyle = colors[12];
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     // Center around camera
@@ -690,7 +690,7 @@ const draw = () => {
     ctx.restore();
 
     // Draw hud
-    ctx.fillStyle = colors[15];
+    ctx.fillStyle = colors[0];
     const unit = canvas.width / 48;
 
     // Draw arrow in direction of joeys
