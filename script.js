@@ -31,6 +31,9 @@ const seededRandom = s => () => (2 ** 31 - 1 & (s = Math.imul(48271, s + seed)))
 const world = {
     baseJoeyDistance: 200,
     randomJoeyDistance: 100,
+    cageChance: 1,
+    baseButtonDistance: 50,
+    randomButtonDistance: 10,
     planetChance: 0.4,
     basePlanetRadius: 3,
     randomPlanetRadius: 6,
@@ -131,6 +134,7 @@ const update = () => {
 
     // Spawn joey if none exists
     if (!entities.some(e => e.sprite?.imageId === "joey")) {
+        // Choose chunk to spawn joey in
         const distance = score === 0 ? chunkSize * 2
             : Math.random() * world.randomJoeyDistance + world.baseJoeyDistance;
         const chunk = getChunk(Vec.add(
@@ -162,6 +166,25 @@ const update = () => {
                 attach: true
             }
         });
+
+        // Add cage
+        if (Math.random() < world.cageChance) {
+            // Choose chunk to generate button in
+            const buttonChunk = getChunk(Vec.add(
+                Vec.scale(Vec.add(chunk, { x: 0.5, y: 0.5 }), chunkSize),
+                Vec.rotate(
+                    { x: Math.random() * world.randomButtonDistance + world.baseButtonDistance, y: 0 },
+                    Math.random() * 2 * Math.PI
+                )
+            ));
+
+            specials[chunk.id].cage = true;
+
+            specials[buttonChunk.id] = {
+                button: true,
+                planet: true
+            };
+        }
     }
 
     // Find active chunks
@@ -211,7 +234,7 @@ const update = () => {
             const startColor = startColors[Math.floor(random() * startColors.length)];
             const swap = random() < 0.5;
 
-            entities.push({
+            planet = {
                 planet: {
                     radius: Math.ceil(random() * world.randomPlanetRadius + world.basePlanetRadius),
                     stripeSpacing: Math.ceil(random() * 3),
@@ -229,15 +252,52 @@ const update = () => {
                 rotation: random() * 2 * Math.PI,
                 rotationalVelocity: (random() * world.randomPlanetRotationalVelocity + world.basePlanetRotationalVelocity)
                     * (random() < 0.5 ? 1 : -1)
-            });
-        }
+            };
+            entities.push(planet);
 
-        // Make sure joey gets attached to planet
-        if (special?.joey && special?.planet) {
-            const joey = entities.find(e => e.sprite?.imageId === "joey" && e.chunkId === chunk.id);
-            const planet = entities.find(e => e.planet && e.chunkId === chunk.id);
-            joey.rotation = 0;
-            joey.position = Vec.add(planet.position, { x: 0, y: -1 });
+            if (special?.joey) {
+                // Make sure joey gets attached to planet
+                const joey = entities.find(e => e.sprite?.imageId === "joey" && e.chunkId === chunk.id);
+                joey.rotation = 0;
+                joey.position = Vec.add(planet.position, { x: 0, y: -1 });
+
+                // Put joey in cage >:-)
+                if (special?.cage) {
+                    entities.push({
+                        sprite: {
+                            imageId: "cage",
+                            scale: 0.5
+                        },
+                        chunkId: chunk.id,
+                        position: joey.position,
+                        velocity: { x: 0, y: 0 },
+                        rotation: joey.rotation,
+                        rotationalVelocity: 0,
+                        collision: {
+                            radius: 3,
+                            attach: true
+                        }
+                    });
+                }
+            }
+
+            if (special?.button) {
+                entities.push({
+                    sprite: {
+                        imageId: "button",
+                        scale: 0.8
+                    },
+                    chunkId: chunk.id,
+                    position: Vec.add(planet.position, { x: 0, y: -1 }),
+                    velocity: { x: 0, y: 0 },
+                    rotation: 0,
+                    rotationalVelocity: 0,
+                    collision: {
+                        radius: 2,
+                        attach: true
+                    }
+                });
+            }
         }
 
         // Create spaceship
@@ -516,6 +576,10 @@ const update = () => {
 
     // Joey collision
     for (let entity of entities.filter(e => e.sprite?.imageId === "joey")) {
+        if (specials[entity.chunkId]?.cage) {
+            continue; // Joey is still in cage
+        }
+
         const distance = Vec.distance(entity.position, player.position);
         if (distance < entity.collision.radius + player.collision.radius) {
             score++;
