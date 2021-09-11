@@ -181,7 +181,7 @@ const update = () => {
             specials[chunk.id].cage = true;
 
             specials[buttonChunk.id] = {
-                button: true,
+                button: chunk.id, // Store chunk of cage
                 planet: true
             };
         }
@@ -283,6 +283,9 @@ const update = () => {
 
             if (special?.button) {
                 entities.push({
+                    button: {
+                        cageChunkId: special.button
+                    },
                     sprite: {
                         imageId: "button",
                         scale: 0.8
@@ -550,7 +553,7 @@ const update = () => {
                 entity.destroy = true;
             } else {
                 // Resolve normal collision
-                const normal = Vec.normalize(Vec.subtract(planet.position, entity.position));
+                const normal = Vec.normalize(between);
                 const rel = Vec.subtract(entity.velocity, planet.velocity);
 
                 if (Vec.dot(rel, normal) < 0) {
@@ -559,7 +562,7 @@ const update = () => {
 
                 const tangent = Vec.normalize(
                     Vec.multiply(
-                        Vec.flip(Vec.subtract(planet.position, entity.position)),
+                        Vec.flip(between),
                         { x: 1, y: -1 }
                     )
                 );
@@ -574,14 +577,18 @@ const update = () => {
         }
     }
 
-    // Joey collision
-    for (let entity of entities.filter(e => e.sprite?.imageId === "joey")) {
-        if (specials[entity.chunkId]?.cage) {
-            continue; // Joey is still in cage
+    // Player collision
+    for (let entity of entities.filter(e => e.collision)) {
+        const distance = Vec.distance(entity.position, player.position);
+        if (distance > entity.collision.radius + player.collision.radius) {
+            continue; // Too far away
         }
 
-        const distance = Vec.distance(entity.position, player.position);
-        if (distance < entity.collision.radius + player.collision.radius) {
+        if (entity.sprite?.imageId === "joey") {
+            if (specials[entity.chunkId]?.cage) {
+                continue; // Joey is still in cage
+            }
+
             score++;
 
             // Increase difficulty
@@ -593,6 +600,14 @@ const update = () => {
             // Remove joey
             entity.destroy = true;
             delete specials[entity.chunkId].joey;
+        } else if (entity.button) {
+            // Remove cage
+            const cage = entities.find(e => e.sprite?.imageId === "cage" && e.chunkId === entity.button.cageChunkId);
+            cage.destroy = true;
+            delete specials[entity.button.cageChunkId].cage;
+
+            // TODO: Make button pressed
+            delete entity.button;
         }
     }
 
