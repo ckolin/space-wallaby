@@ -606,7 +606,8 @@ const update = () => {
             cage.destroy = true;
             delete specials[entity.button.cageChunkId].cage;
 
-            // TODO: Make button pressed
+            // Make button pressed
+            entity.sprite.imageId = "button_pressed";
             delete entity.button;
         }
     }
@@ -680,7 +681,7 @@ const update = () => {
 const draw = () => {
     update();
 
-    // Draw backgruond
+    // Draw background
     ctx.fillStyle = colors[12];
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
