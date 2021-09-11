@@ -605,9 +605,11 @@ const update = () => {
             entity.destroy = true;
             delete specials[entity.chunkId].joey;
         } else if (entity.button) {
-            // Remove cage
+            // Remove cage if it exists
             const cage = entities.find(e => e.sprite?.imageId === "cage" && e.chunkId === entity.button.cageChunkId);
-            cage.destroy = true;
+            if (cage) {
+                cage.destroy = true;
+            }
             delete specials[entity.button.cageChunkId].cage;
 
             // Make button pressed
