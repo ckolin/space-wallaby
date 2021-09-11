@@ -615,6 +615,7 @@ const update = () => {
             // Make button pressed
             entity.sprite.imageId = "button_pressed";
             delete entity.button;
+            delete specials[entity.chunkId].button;
         }
     }
 
