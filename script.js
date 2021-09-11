@@ -42,7 +42,7 @@ const world = {
     randomPlanetRadius: 6,
     basePlanetRotationalVelocity: 1,
     randomPlanetRotationalVelocity: 3,
-    spaceshipChance: 0.01,
+    spaceshipChance: 0.001,
     baseSpaceshipSpeed: 6,
     randomSpaceshipSpeed: 4,
     baseSpaceshipRotationSpeed: 0.1,
@@ -91,13 +91,14 @@ const player = {
         jumpSpeed: 20,
         boostSpeed: 80,
         rotationSpeed: 100,
-        attachedMomentumFactor: -0.2,
-        floatingMomentumFactor: 0.1,
+        attachedMomentumFactor: 0.05,
+        floatingMomentumFactor: 0.2,
         boostingMomentumFactor: -0.8
     },
     keep: true,
     position: { x: 0, y: 0 },
     velocity: { x: 0, y: 0 },
+    damping: 0.1,
     rotation: 0,
     rotationalVelocity: 0,
     rotationalDamping: 1,
@@ -321,10 +322,10 @@ const update = () => {
                 },
                 position: chunkOrigin,
                 velocity: { x: 0, y: 0 },
-                damping: 0.3,
+                damping: 0.4,
                 rotation: Math.random() * 2 * Math.PI,
                 rotationalVelocity: 0,
-                rotationalDamping: 0.6,
+                rotationalDamping: 0.4,
                 collision: {
                     radius: 6,
                     attach: false
@@ -597,7 +598,7 @@ const update = () => {
             // Increase difficulty
             world.baseJoeyDistance += 20;
             world.cageChance += 0.1;
-            world.spaceshipChance += 0.01;
+            world.spaceshipChance *= 1.5;
             world.basePlanetRotationalVelocity += 0.5;
             world.spaceshipIdleTime *= 0.8;
 
@@ -851,8 +852,9 @@ const draw = () => {
     }
 
     // Draw player momentum bar
-    ctx.fillRect(0, 0, canvas.width * player.wallaby.momentum, unit);
+    ctx.fillRect(0, 0, canvas.width * player.wallaby.momentum, unit / 2);
 
+    // Draw score
     const font = document.getElementById("font");
     const drawWord = (word) => {
         let x = 0;
