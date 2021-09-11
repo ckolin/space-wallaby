@@ -196,7 +196,7 @@ const update = () => {
     const screenHalf = Vec.scale({ x: 1, y: 1 }, camera.view.size / 2);
     const start = Vec.subtract(camera.position, screenHalf);
     const end = Vec.add(camera.position, screenHalf);
-    const overscan = chunkSize * 2;
+    const overscan = chunkSize;
     for (let x = start.x - overscan; x <= end.x + overscan; x += chunkSize) {
         for (let y = start.y - overscan; y <= end.y + overscan; y += chunkSize) {
             chunks.push(getChunk({ x, y }));
@@ -212,7 +212,7 @@ const update = () => {
 
         // Create stars
         if (special?.stars == null ? true : special.stars) {
-            const numStars = random() * 4;
+            const numStars = Math.ceil(random() * 3);
             for (let i = 0; i < numStars; i++) {
                 entities.push({
                     star: {
@@ -380,7 +380,7 @@ const update = () => {
             player.velocity = Vec.add(player.velocity, Vec.scale(downward, player.wallaby.boostSpeed * delta));
 
             // Spawn particles
-            for (let i = 0; i < deltaMs / 4; i++) {
+            for (let i = 0; i < deltaMs / 6; i++) {
                 entities.push({
                     particle: {
                         color: colors[0],
@@ -442,7 +442,7 @@ const update = () => {
                 const offset = { x: -3, y: 7 };
                 const right = Vec.rotate(offset, entity.rotation);
                 const left = Vec.rotate(Vec.multiply(offset, { x: 1, y: -1 }), entity.rotation);
-                for (let i = 0; i < deltaMs / 4; i++) {
+                for (let i = 0; i < deltaMs / 6; i++) {
                     entities.push({
                         particle: {
                             color: colors[0],
