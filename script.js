@@ -23,6 +23,9 @@ const colors = [
     "#160712", "#593084", "#3870be", "#579fb4"
 ];
 
+// Font is m3x6 by Daniel Linssen
+const alphabet = "naobpcdresftguhvijkxlyz0123456789: ";
+
 // Seeded random number generator
 const seed = Date.now();
 const seededRandom = s => () => (2 ** 31 - 1 & (s = Math.imul(48271, s + seed))) / 2 ** 31;
@@ -592,8 +595,9 @@ const update = () => {
             score++;
 
             // Increase difficulty
-            world.spaceshipChance += 0.01;
             world.baseJoeyDistance += 20;
+            world.cageChance += 0.1;
+            world.spaceshipChance += 0.01;
             world.basePlanetRotationalVelocity += 0.5;
             world.spaceshipIdleTime *= 0.8;
 
@@ -846,11 +850,35 @@ const draw = () => {
     // Draw player momentum bar
     ctx.fillRect(0, 0, canvas.width * player.wallaby.momentum, unit);
 
+    const font = document.getElementById("font");
+    const drawWord = (word) => {
+        let x = 0;
+        const w = 3;
+        word
+            .toLowerCase()
+            .split("")
+            .map(c => alphabet.indexOf(c))
+            .filter(i => i !== -1)
+            .forEach(i => {
+                ctx.drawImage(font, i * w, 0, w, font.naturalHeight, x, 0, w, font.naturalHeight);
+                x += w + 1;
+            });
+    };
+
+    ctx.save();
+    ctx.translate(unit / 2, canvas.height - unit * 2);
+    ctx.scale(unit / 4, unit / 4);
+    drawWord("000".concat(score).substring(score.toString().length));
+    ctx.restore();
+
     requestAnimationFrame(draw);
 };
 
 const canvas = document.getElementById("canvas");
-const ctx = canvas.getContext("2d");
+const ctx = canvas.getContext("2d", {
+    alpha: false,
+    desynchronized: true
+});
 
 // Input
 window.addEventListener("blur", () => input.pause = true);
