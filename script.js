@@ -107,10 +107,9 @@ const player = {
     },
     wallaby: {
         momentum: 0,
-        jumpSpeed: 20,
-        boostSpeed: 80,
-        rotationSpeed: 100,
-        attachedMomentumFactor: 0.05,
+        jumpSpeed: 30,
+        boostSpeed: 120,
+        attachedMomentumFactor: 0.4,
         floatingMomentumFactor: 0.2,
         boostingMomentumFactor: -0.8,
         score: 0,
@@ -122,8 +121,7 @@ const player = {
     damping: 0.1,
     rotation: 0,
     rotationalVelocity: 0,
-    rotationalDamping: 1,
-    gravity: 0.8,
+    gravity: 2,
     collision: {
         radius: 6,
         attach: true
@@ -370,18 +368,13 @@ const update = () => {
 
     // Player rotation
     if (!player.attachedTo) {
-        let shortest = { x: Infinity, y: Infinity };
-
+        let force = { x: 0, y: 0 };
         for (let planet of entities.filter(e => e.planet)) {
             const between = Vec.subtract(planet.position, player.position)
-            if (Vec.length2(between) < Vec.length2(shortest)) {
-                shortest = between;
-            }
+            force = Vec.add(force, Vec.scale(between, 1 / Vec.length(between) ** 4));
         }
 
-        const target = Vec.angle(shortest,) - 0.5 * Math.PI;
-        const angle = angleDifference(target, player.rotation);
-        player.rotationalVelocity += angle / Vec.length(shortest) * player.wallaby.rotationSpeed * delta;
+        player.rotation = Vec.angle(force) - 0.5 * Math.PI;
     }
 
     // Player jumping and boosting
