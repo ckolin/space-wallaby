@@ -107,7 +107,7 @@ const player = {
     },
     wallaby: {
         momentum: 0,
-        jumpSpeed: 30,
+        jumpSpeed: 40,
         boostSpeed: 120,
         attachedMomentumFactor: 0.4,
         floatingMomentumFactor: 0.2,
