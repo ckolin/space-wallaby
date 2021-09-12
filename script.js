@@ -447,14 +447,14 @@ const update = () => {
                 const offset = { x: -3, y: 7 };
                 const right = Vec.rotate(offset, entity.rotation);
                 const left = Vec.rotate(Vec.multiply(offset, { x: 1, y: -1 }), entity.rotation);
-                for (let i = 0; i < deltaMs / 6; i++) {
+                for (let i = 0; i < deltaMs / 8; i++) {
                     entities.push({
                         particle: {
                             color: colors[0],
                             size: Math.random() + 0.5
                         },
                         age: 0,
-                        lifetime: Math.random() * 200 + 200,
+                        lifetime: Math.random() * 200 + 100,
                         position: Vec.add(entity.position, i % 2 === 0 ? right : left),
                         velocity: Vec.scale(Vec.rotate(forward, Math.random() - 0.5), -(Math.random() * 10 + 20)),
                         collision: {
