@@ -34,7 +34,7 @@ const seededRandom = s => () => (2 ** 31 - 1 & (s = Math.imul(48271, s + seed)))
 const world = {
     baseJoeyDistance: 200,
     randomJoeyDistance: 100,
-    cageChance: 1,
+    cageChance: 0,
     baseButtonDistance: 50,
     randomButtonDistance: 10,
     planetChance: 0.4,
@@ -606,9 +606,9 @@ const update = () => {
 
             // Increase difficulty
             world.baseJoeyDistance += 20;
-            world.cageChance += 0.1;
-            world.spaceshipChance *= 1.5;
+            world.cageChance = Math.min(0.9, world.cageChance + 0.05);
             world.basePlanetRotationalVelocity += 0.5;
+            world.spaceshipChance *= 1.5;
             world.spaceshipIdleTime *= 0.8;
 
             // Remove joey
