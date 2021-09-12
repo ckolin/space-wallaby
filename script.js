@@ -12,7 +12,8 @@ const dbg = (...objs) => {
 
 const input = {
     action: false,
-    pause: false
+    pause: false,
+    gameOver: false
 };
 
 // URBEX 16 palette by Rustocrat (https://lospec.com/palette-list/urbex-16)
@@ -113,7 +114,7 @@ const player = {
         floatingMomentumFactor: 0.2,
         boostingMomentumFactor: -0.8,
         score: 0,
-        lives: 3
+        lives: 2
     },
     keep: true,
     position: { x: 0, y: 0 },
@@ -152,7 +153,7 @@ const update = () => {
     const delta = deltaMs / 1000;
     lastUpdate = now;
 
-    if (input.pause) {
+    if (input.pause || input.gameOver) {
         return;
     }
 
@@ -653,7 +654,6 @@ const update = () => {
             zzfx(...[1.55, , 309, , .08, .18, 3, 1.6, -6.7, , , , , .3, , .1, .05, .69, .03]);
 
             player.wallaby.lives--;
-
             entity.destroy = true;
         }
     }
@@ -707,6 +707,14 @@ const update = () => {
         entity.age += deltaMs;
     }
 
+    // Game over
+    if (player.wallaby.lives <= 0) {
+        input.gameOver = true;
+        for (let entity of entities.filter(e => !e.star && e !== camera)) {
+            entity.destroy = true;
+        }
+    }
+
     entities
         .filter(e => !e.keep)
         .filter(e =>
@@ -725,36 +733,6 @@ const update = () => {
 };
 
 const draw = () => {
-    const unit = canvas.width / 48; // Used for ui element sizes
-
-    if (player.wallaby.lives <= 0) {
-        ctx.fillStyle = colors[12];
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        ctx.fillStyle = colors[0];
-
-        ctx.save();
-        ctx.scale(unit, unit);
-        ctx.translate(0, 5);
-        drawWord("  ...gan..ne over");
-        ctx.translate(0, 15)
-        drawWord("     ." + "000".concat(player.wallaby.score).substring(player.wallaby.score.toString().length));
-        ctx.translate(0, 8);
-        ctx.scale(0.5, 0.5);
-        drawWord("      joeys rescued");
-        ctx.translate(0, 30);
-        drawWord("    tap to try again");
-        ctx.restore();
-
-        // Restart game
-        if (input.action) {
-            location.reload();
-        }
-
-        requestAnimationFrame(draw);
-        return;
-    }
-
     // Perform physics update
     update();
 
@@ -895,51 +873,73 @@ const draw = () => {
 
     // Draw hud
     ctx.fillStyle = colors[0];
+    const unit = canvas.width / 48; // Used for ui element sizes
 
-    // Draw arrow in direction of joeys
-    for (let entity of entities.filter(e => e.sprite?.imageId === "joey")) {
-        const between = Vec.subtract(entity.position, camera.position);
-        const distance = Vec.length(between);
-        const scale = 40 / distance + 1;
-
+    if (input.gameOver) {
         ctx.save();
+        ctx.scale(unit, unit);
+        ctx.translate(0, 5);
+        drawWord("  ...gan..ne over");
+        ctx.translate(0, 15)
+        drawWord("     ." + "000".concat(player.wallaby.score).substring(player.wallaby.score.toString().length));
+        ctx.translate(0, 8);
+        ctx.scale(0.5, 0.5);
+        drawWord("      joeys rescued");
+        ctx.translate(0, 25);
+        ctx.globalAlpha = 0.5;
+        drawWord("    tap to try again");
+        ctx.restore();
 
-        ctx.globalAlpha = Math.max(0, Math.min(1, (distance - 60) / 10));
-        ctx.translate(canvas.width / 2, canvas.height / 2);
-        ctx.rotate(Vec.angle(between));
-        ctx.translate(10 * unit, 0);
-        ctx.scale(scale, scale);
+        // Restart game
+        if (input.action) {
+            location.reload();
+        }
+    } else {
+        // Draw arrow in direction of joeys
+        for (let entity of entities.filter(e => e.sprite?.imageId === "joey")) {
+            const between = Vec.subtract(entity.position, camera.position);
+            const distance = Vec.length(between);
+            const scale = 40 / distance + 1;
 
-        ctx.beginPath();
-        ctx.moveTo(0, -unit);
-        ctx.lineTo(unit, 0);
-        ctx.lineTo(0, unit);
-        ctx.fill();
+            ctx.save();
 
+            ctx.globalAlpha = Math.max(0, Math.min(1, (distance - 60) / 10));
+            ctx.translate(canvas.width / 2, canvas.height / 2);
+            ctx.rotate(Vec.angle(between));
+            ctx.translate(10 * unit, 0);
+            ctx.scale(scale, scale);
+
+            ctx.beginPath();
+            ctx.moveTo(0, -unit);
+            ctx.lineTo(unit, 0);
+            ctx.lineTo(0, unit);
+            ctx.fill();
+
+            ctx.restore();
+        }
+
+        // Draw player momentum bar
+        ctx.fillRect(0, 0, canvas.width * player.wallaby.momentum, unit / 2);
+
+        // Draw lives
+        const heartImage = document.getElementById("heart");
+        ctx.save();
+        ctx.translate(canvas.width, canvas.height);
+        ctx.scale(unit / 4, unit / 4);
+        ctx.translate(-2, -8);
+        for (let i = 1; i <= player.wallaby.lives; i++) {
+            ctx.drawImage(heartImage, -i * (heartImage.naturalWidth + 1), 0);
+        }
+        ctx.restore();
+
+        // Draw score
+        ctx.save();
+        ctx.translate(0, canvas.height);
+        ctx.scale(unit / 4, unit / 4);
+        ctx.translate(2, -8)
+        drawWord("000".concat(player.wallaby.score).substring(player.wallaby.score.toString().length));
         ctx.restore();
     }
-
-    // Draw player momentum bar
-    ctx.fillRect(0, 0, canvas.width * player.wallaby.momentum, unit / 2);
-
-    // Draw lives
-    const heartImage = document.getElementById("heart");
-    ctx.save();
-    ctx.translate(canvas.width, canvas.height);
-    ctx.scale(unit / 4, unit / 4);
-    ctx.translate(-2, -8);
-    for (let i = 1; i <= player.wallaby.lives; i++) {
-        ctx.drawImage(heartImage, -i * (heartImage.naturalWidth + 1), 0);
-    }
-    ctx.restore();
-
-    // Draw score
-    ctx.save();
-    ctx.translate(0, canvas.height);
-    ctx.scale(unit / 4, unit / 4);
-    ctx.translate(2, -8)
-    drawWord("000".concat(player.wallaby.score).substring(player.wallaby.score.toString().length));
-    ctx.restore();
 
     requestAnimationFrame(draw);
 };
