@@ -23,8 +23,27 @@ const colors = [
     "#160712", "#593084", "#3870be", "#579fb4"
 ];
 
+// Text drawing
 // Font is m3x6 by Daniel Linssen
 const alphabet = "naobpcdresftguhvijkxlyz0123456789: ";
+const fontImage = document.getElementById("font");
+const drawWord = (word) => {
+    let x = 0;
+    const w = 3;
+    const h = fontImage.naturalHeight;
+    word
+        .toLowerCase()
+        .split("")
+        .forEach(c => {
+            const i = alphabet.indexOf(c);
+            if (i === -1) { // HACK: Enable chaining characters ("N..N" looks like "M" for example)
+                x--;
+            } else {
+                ctx.drawImage(fontImage, i * w, 0, w, h, x, 0, w, h);
+                x += w + 1;
+            }
+        });
+};
 
 // Seeded random number generator
 const seed = Date.now();
@@ -633,9 +652,6 @@ const update = () => {
             zzfx(...[1.55, , 309, , .08, .18, 3, 1.6, -6.7, , , , , .3, , .1, .05, .69, .03]);
 
             player.wallaby.lives--;
-            if (player.wallaby.lives <= 0) {
-                // TODO: Game over
-            }
 
             entity.destroy = true;
         }
@@ -708,6 +724,37 @@ const update = () => {
 };
 
 const draw = () => {
+    const unit = canvas.width / 48; // Used for ui element sizes
+
+    if (player.wallaby.lives <= 0) {
+        ctx.fillStyle = colors[12];
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ctx.fillStyle = colors[0];
+
+        ctx.save();
+        ctx.scale(unit, unit);
+        ctx.translate(0, 5);
+        drawWord("  ...gan..ne over");
+        ctx.translate(0, 15)
+        drawWord("     ." + "000".concat(player.wallaby.score).substring(player.wallaby.score.toString().length));
+        ctx.translate(0, 8);
+        ctx.scale(0.5, 0.5);
+        drawWord("      joeys rescued");
+        ctx.translate(0, 30);
+        drawWord("    tap to try again");
+        ctx.restore();
+
+        // Restart game
+        if (input.action) {
+            location.reload();
+        }
+
+        requestAnimationFrame(draw);
+        return;
+    }
+
+    // Perform physics update
     update();
 
     // Draw background
@@ -847,7 +894,6 @@ const draw = () => {
 
     // Draw hud
     ctx.fillStyle = colors[0];
-    const unit = canvas.width / 48;
 
     // Draw arrow in direction of joeys
     for (let entity of entities.filter(e => e.sprite?.imageId === "joey")) {
@@ -878,33 +924,19 @@ const draw = () => {
     // Draw lives
     const heartImage = document.getElementById("heart");
     ctx.save();
-    ctx.translate(canvas.width - unit / 2, canvas.height - unit * 2);
+    ctx.translate(canvas.width, canvas.height);
     ctx.scale(unit / 4, unit / 4);
+    ctx.translate(-2, -8);
     for (let i = 1; i <= player.wallaby.lives; i++) {
         ctx.drawImage(heartImage, -i * (heartImage.naturalWidth + 1), 0);
     }
     ctx.restore();
 
     // Draw score
-    const fontImage = document.getElementById("font");
-    const drawWord = (word) => {
-        let x = 0;
-        const w = 3;
-        const h = fontImage.naturalHeight;
-        word
-            .toLowerCase()
-            .split("")
-            .map(c => alphabet.indexOf(c))
-            .filter(i => i !== -1)
-            .forEach(i => {
-                ctx.drawImage(fontImage, i * w, 0, w, h, x, 0, w, h);
-                x += w + 1;
-            });
-    };
-
     ctx.save();
-    ctx.translate(unit / 2, canvas.height - unit * 2);
+    ctx.translate(0, canvas.height);
     ctx.scale(unit / 4, unit / 4);
+    ctx.translate(2, -8)
     drawWord("000".concat(player.wallaby.score).substring(player.wallaby.score.toString().length));
     ctx.restore();
 
@@ -934,6 +966,12 @@ document.addEventListener("keydown", (e) => {
 
     if (e.key === " ") {
         input.action = true;
+    }
+
+    if (e.key === "Escape") {
+        input.pause = !input.pause;
+    } else {
+        input.pause = false;
     }
 });
 
