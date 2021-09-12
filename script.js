@@ -104,7 +104,7 @@ const player = {
     rotationalDamping: 1,
     gravity: 0.8,
     collision: {
-        radius: 5,
+        radius: 6,
         attach: true
     }
 };
@@ -166,7 +166,7 @@ const update = () => {
             rotation: 0,
             rotationalVelocity: 0,
             collision: {
-                radius: 3,
+                radius: 4,
                 attach: true
             }
         });
@@ -278,7 +278,7 @@ const update = () => {
                         rotation: joey.rotation,
                         rotationalVelocity: 0,
                         collision: {
-                            radius: 3,
+                            radius: 4,
                             attach: true
                         }
                     });
