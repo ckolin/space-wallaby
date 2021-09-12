@@ -468,6 +468,9 @@ const update = () => {
                 }
                 break;
             case "shoot":
+                const volume = 10 / Vec.distance(player.position, entity.position);
+                zzfx(...[volume, , 465, , .06, .03, 3, 1.37, -7.8, , , , .09, , , .1, .06, .92, .01, .43]);
+
                 entities.push({
                     sprite: {
                         imageId: "laser",
