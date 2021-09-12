@@ -386,7 +386,7 @@ const update = () => {
     // Player jumping and boosting
     if (input.action) {
         if (player.attachedTo) {
-            zzfx(...[.5, , 200, .05, .01, .18, 2, 1.03, 8.9, , , , , .3, , .1, , .79, .04]);
+            zzfx(...[.2, , 200, .05, .01, .18, 2, 1.03, 8.9, , , , , .3, , .1, , .79, .04]);
 
             const direction = Vec.normalize(Vec.scale(Vec.subtract(player.attachedTo.position, player.position), -1));
             player.position = Vec.add(player.position, direction); // Move out of collision
@@ -438,12 +438,13 @@ const update = () => {
     for (let entity of entities.filter(e => e.spaceship)) {
         entity.spaceship.since += deltaMs;
         const forward = Vec.rotate({ x: 1, y: 0 }, entity.rotation);
+        const volume = Math.min(1, 10 / Vec.distance(player.position, entity.position));
         let newState;
 
         switch (entity.spaceship.state) {
             case "idle":
                 if (entity.spaceship.since > world.spaceshipIdleTime) {
-                    newState = Math.random() < 0.5 ? "boost" : "rotate";
+                    newState = Math.random() < 0.4 ? "boost" : "rotate";
                 }
                 break;
             case "rotate":
@@ -454,10 +455,11 @@ const update = () => {
                 entity.rotationalVelocity += angle * entity.spaceship.rotationSpeed * delta;
 
                 if (entity.spaceship.since > 1000) {
-                    newState = Math.random() < 0.5 ? "boost" : "shoot";
+                    newState = Math.random() < 0.3 ? "boost" : "shoot";
                 }
                 break;
             case "boost":
+                zzfx(...[.05 * volume, 0, 1e6, , , .01, , 0, , , , , , 1e3, , .3]);
                 entity.velocity = Vec.add(
                     entity.velocity,
                     Vec.scale(forward, entity.spaceship.speed * delta)
@@ -485,11 +487,10 @@ const update = () => {
                 }
 
                 if (entity.spaceship.since > 2000) {
-                    newState = "idle";
+                    newState = Math.random() < 0.7 ? "idle" : "shoot";
                 }
                 break;
             case "shoot":
-                const volume = 10 / Vec.distance(player.position, entity.position);
                 zzfx(...[volume, , 465, , .06, .03, 3, 1.37, -7.8, , , , .09, , , .1, .06, .92, .01, .43]);
 
                 entities.push({

@@ -25,7 +25,7 @@ SOFTWARE.
 'use strict';let zzfx,zzfxV,zzfxX
 
 // ZzFXMicro - Zuper Zmall Zound Zynth - v1.1.8 ~ 884 bytes minified
-zzfxV=.3    // volume
+zzfxV=.1    // volume
 zzfx=       // play sound
 (p=1,k=.05,b=220,e=0,r=0,t=.1,q=0,D=1,u=0,y=0,v=0,z=0,l=0,E=0,A=0,F=0,c=0,w=1,m=0,B=0)=>{let
 M=Math,R=44100,d=2*M.PI,G=u*=500*d/R/R,C=b*=(1-k+2*k*M.random(k=[]))*d/R,g=0,H=0,a=0,n=1,I=0
