@@ -366,6 +366,8 @@ const update = () => {
     // Player jumping and boosting
     if (input.action) {
         if (player.attachedTo) {
+            zzfx(...[.5, , 200, .05, .01, .18, 2, 1.03, 8.9, , , , , .3, , .1, , .79, .04]);
+
             const direction = Vec.normalize(Vec.scale(Vec.subtract(player.attachedTo.position, player.position), -1));
             player.position = Vec.add(player.position, direction); // Move out of collision
             player.velocity = Vec.rotate(
@@ -376,6 +378,8 @@ const update = () => {
             // Remove attachment
             player.attachedTo = null;
         } else if (player.wallaby.momentum > 0) {
+            zzfx(...[.05, 0, 1e3, , , .01, , 0, , , , , , 1e3, , .3]);
+
             player.wallaby.momentum += player.wallaby.boostingMomentumFactor * delta;
             const downward = Vec.rotate({ x: 0, y: -1 }, player.rotation);
             player.velocity = Vec.add(player.velocity, Vec.scale(downward, player.wallaby.boostSpeed * delta));
@@ -593,6 +597,7 @@ const update = () => {
                 continue; // Joey is still in cage
             }
 
+            zzfx(...[1.93, , 342, , .01, .23, , 1.28, , , 98, .09, , .1, , , .08, .72, .04]);
             score++;
 
             // Increase difficulty
@@ -606,6 +611,8 @@ const update = () => {
             entity.destroy = true;
             delete specials[entity.chunkId].joey;
         } else if (entity.button) {
+            zzfx(...[2.1, , 1928, .01, .03, .04, 2, 2.54, 6.1, -65, , , .01, , , , .11, .09, .05, .61]);
+
             // Remove cage if it exists
             const cage = entities.find(e => e.sprite?.imageId === "cage" && e.chunkId === entity.button.cageChunkId);
             if (cage) {
