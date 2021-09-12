@@ -80,7 +80,6 @@ const camera = {
     velocity: { x: 0, y: 0 }
 };
 
-let score = 0;
 const player = {
     sprite: {
         imageId: "wallaby",
@@ -93,7 +92,9 @@ const player = {
         rotationSpeed: 100,
         attachedMomentumFactor: 0.05,
         floatingMomentumFactor: 0.2,
-        boostingMomentumFactor: -0.8
+        boostingMomentumFactor: -0.8,
+        score: 0,
+        lives: 3
     },
     keep: true,
     position: { x: 0, y: 0 },
@@ -139,7 +140,7 @@ const update = () => {
     // Spawn joey if none exists
     if (!entities.some(e => e.sprite?.imageId === "joey")) {
         // Choose chunk to spawn joey in
-        const distance = score === 0 ? chunkSize * 2
+        const distance = player.wallaby.score === 0 ? chunkSize * 2
             : Math.random() * world.randomJoeyDistance + world.baseJoeyDistance;
         const chunk = getChunk(Vec.add(
             player.position,
@@ -601,7 +602,7 @@ const update = () => {
             }
 
             zzfx(...[1.93, , 342, , .01, .23, , 1.28, , , 98, .09, , .1, , , .08, .72, .04]);
-            score++;
+            player.wallaby.score++;
 
             // Increase difficulty
             world.baseJoeyDistance += 20;
@@ -627,6 +628,15 @@ const update = () => {
             entity.sprite.imageId = "button_pressed";
             delete entity.button;
             delete specials[entity.chunkId].button;
+        } else if (entity.sprite?.imageId === "laser") {
+            zzfx(...[1.55, , 309, , .08, .18, 3, 1.6, -6.7, , , , , .3, , .1, .05, .69, .03]);
+
+            player.wallaby.lives--;
+            if (player.wallaby.lives <= 0) {
+                // TODO: Game over
+            }
+
+            entity.destroy = true;
         }
     }
 
@@ -864,18 +874,29 @@ const draw = () => {
     // Draw player momentum bar
     ctx.fillRect(0, 0, canvas.width * player.wallaby.momentum, unit / 2);
 
+    // Draw lives
+    const heartImage = document.getElementById("heart");
+    ctx.save();
+    ctx.translate(canvas.width - unit / 2, canvas.height - unit * 2);
+    ctx.scale(unit / 4, unit / 4);
+    for (let i = 1; i <= player.wallaby.lives; i++) {
+        ctx.drawImage(heartImage, -i * (heartImage.naturalWidth + 1), 0);
+    }
+    ctx.restore();
+
     // Draw score
-    const font = document.getElementById("font");
+    const fontImage = document.getElementById("font");
     const drawWord = (word) => {
         let x = 0;
         const w = 3;
+        const h = fontImage.naturalHeight;
         word
             .toLowerCase()
             .split("")
             .map(c => alphabet.indexOf(c))
             .filter(i => i !== -1)
             .forEach(i => {
-                ctx.drawImage(font, i * w, 0, w, font.naturalHeight, x, 0, w, font.naturalHeight);
+                ctx.drawImage(fontImage, i * w, 0, w, h, x, 0, w, h);
                 x += w + 1;
             });
     };
@@ -883,7 +904,7 @@ const draw = () => {
     ctx.save();
     ctx.translate(unit / 2, canvas.height - unit * 2);
     ctx.scale(unit / 4, unit / 4);
-    drawWord("000".concat(score).substring(score.toString().length));
+    drawWord("000".concat(player.wallaby.score).substring(player.wallaby.score.toString().length));
     ctx.restore();
 
     requestAnimationFrame(draw);
