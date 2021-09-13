@@ -787,11 +787,11 @@ const draw = () => {
         for (let y = -r; y <= r; y++) {
             const w = width[y];
             ctx.fillStyle = entity.planet.firstColor;
-            ctx.fillRect(-w, y, 2 * w + 1, 1);
+            ctx.fillRect(-w, y, 2 * w + 1, 1.1);
 
             if (y % entity.planet.stripeSpacing == 0) {
                 ctx.fillStyle = entity.planet.secondColor;
-                ctx.fillRect(-w, y, Math.ceil(random() * 2 * w), 1);
+                ctx.fillRect(-w, y, Math.ceil(random() * 2 * w), 1.1);
             }
         }
 
