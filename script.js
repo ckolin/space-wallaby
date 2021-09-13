@@ -71,7 +71,7 @@ const world = {
 };
 
 // Chunk system for procedural generation
-chunkSize = 42;
+const chunkSize = 42;
 const getChunk = position => {
     const chunk = Vec.floor(Vec.scale(position, 1 / chunkSize));
     chunk.id = chunk.y * 1e9 + chunk.x;
@@ -257,7 +257,7 @@ const update = () => {
             const startColor = startColors[Math.floor(random() * startColors.length)];
             const swap = random() < 0.5;
 
-            planet = {
+            const planet = {
                 planet: {
                     radius: Math.ceil(random() * world.randomPlanetRadius + world.basePlanetRadius),
                     stripeSpacing: Math.ceil(random() * 3),
@@ -565,7 +565,7 @@ const update = () => {
                 planet.velocity = Vec.scale(perp, 1 / 4);
 
                 // Stop movement and rotation
-                entity.velocity = force = { x: 0, y: 0 };
+                entity.velocity = { x: 0, y: 0 };
                 entity.rotationalVelocity = 0;
 
                 // Set exact position
