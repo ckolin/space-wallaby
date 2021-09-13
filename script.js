@@ -106,12 +106,12 @@ const player = {
         scale: 0.5
     },
     wallaby: {
-        momentum: 0,
+        charge: 0,
         jumpSpeed: 40,
         boostSpeed: 120,
-        attachedMomentumFactor: 0.4,
-        floatingMomentumFactor: 0.2,
-        boostingMomentumFactor: -0.8,
+        attachedChargeFactor: 0.4,
+        floatingChargeFactor: 0.1,
+        boostingChargeFactor: -1,
         score: 0,
         lives: 2
     },
@@ -391,10 +391,10 @@ const update = () => {
 
             // Remove attachment
             player.attachedTo = null;
-        } else if (player.wallaby.momentum > 0) {
+        } else if (player.wallaby.charge > 0) {
             zzfx(...[.05, 0, 1e3, , , .01, , 0, , , , , , 1e3, , .3]);
 
-            player.wallaby.momentum += player.wallaby.boostingMomentumFactor * delta;
+            player.wallaby.charge += player.wallaby.boostingChargeFactor * delta;
             const downward = Vec.rotate({ x: 0, y: -1 }, player.rotation);
             player.velocity = Vec.add(player.velocity, Vec.scale(downward, player.wallaby.boostSpeed * delta));
 
@@ -420,13 +420,13 @@ const update = () => {
         }
     }
 
-    // Player momentum
+    // Player charge
     if (player.attachedTo) {
-        player.wallaby.momentum += player.wallaby.attachedMomentumFactor * delta;
+        player.wallaby.charge += player.wallaby.attachedChargeFactor * delta;
     } else {
-        player.wallaby.momentum += player.wallaby.floatingMomentumFactor * delta;
+        player.wallaby.charge += player.wallaby.floatingChargeFactor * delta;
     }
-    player.wallaby.momentum = Math.max(0, Math.min(1, player.wallaby.momentum));
+    player.wallaby.charge = Math.max(0, Math.min(1, player.wallaby.charge));
 
     // Spaceship logic
     for (let entity of entities.filter(e => e.spaceship)) {
@@ -719,7 +719,7 @@ const update = () => {
     // Remove entities marked to be destroyed
     entities = entities.filter(e => !e.destroy);
 
-    // Remove attachments that where one entity destroyed
+    // Remove attachments to destroyed entities
     for (let entity of entities.filter(e => e.attachedTo?.destroy)) {
         entity.attachedTo = null;
     }
@@ -911,8 +911,8 @@ const draw = () => {
             ctx.restore();
         }
 
-        // Draw player momentum bar
-        ctx.fillRect(0, 0, canvas.width * player.wallaby.momentum, unit / 2);
+        // Draw player charge bar
+        ctx.fillRect(0, 0, canvas.width * player.wallaby.charge, unit / 2);
 
         // Draw lives
         const heartImage = document.getElementById("heart");
